@@ -14,7 +14,7 @@ async function getFileContent(drive, response) {
   let progress = 0;
   let dest = fs.createWriteStream("photo.pdf");
 
-  await drive.files
+  return drive.files
     .get(
       { fileId: "1Ht0Bbqo_C37xL4KaWB2YebbLwOHCF7i8", alt: "media" },
       { responseType: "stream" }
