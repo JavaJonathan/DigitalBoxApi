@@ -1,10 +1,10 @@
 const FileHelper = require("./FileHelper");
 
-let fileIdDictionary = {};
-
 exports.CheckForDbUpdates = (fileIds, jsonDB) => {
   let unaccountedFiles = [];
-  createFileIdDictionary(jsonDB.Orders);
+  let fileIdDictionary = {};
+
+  createFileIdDictionary(jsonDB.Orders, fileIdDictionary);
   fileIds.forEach((fileId) => {
     if (!fileIdDictionary.hasOwnProperty(fileId)) {
       if (fileId !== FileHelper.JsonFileId) {
@@ -15,7 +15,7 @@ exports.CheckForDbUpdates = (fileIds, jsonDB) => {
   return unaccountedFiles;
 };
 //we create a dictionary with the fileIds for quick searching
-const createFileIdDictionary = (orders) =>
+const createFileIdDictionary = (orders, fileIdDictionary) =>
   orders.forEach((order) => {
     fileIdDictionary[`${order.FileId}`] = "";
   });

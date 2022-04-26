@@ -5,10 +5,11 @@ const fs = require("fs");
 const CompareHelper = require("./CompareHelper");
 const ContentHelper = require("./ContentHelper");
 const UploadHelper = require("./UploadHelper");
+const MoveFileHelper = require("./MoveFileHelper");
 
-exports.JsonFileId = "1PJZgDZ8G0LzjJkRAeTdPPlYSAxALDrRh";
+exports.JsonFileId = "1Es2hHSXsd2ZGL6pnPKKFohUgYTj_4AeZ";
 
-exports.GetFileIds = async (request, response) => {
+exports.GetOrdersFromFile = async (request, response) => {
   let drive = AuthorizationHelper.authorizeWithGoogle(request.token);
 
   let fileIds = [];
@@ -16,6 +17,7 @@ exports.GetFileIds = async (request, response) => {
 
   await getPdfFiles(drive, fileIds);
   jsonDB = await getJSONFile(drive);
+  console.log(fileIds)
   let unaccountedFiles = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
 
   response.json({
@@ -32,6 +34,22 @@ exports.GetFileIds = async (request, response) => {
   writeToJsonFile(jsonDB, drive);
 };
 
+exports.CancelOrShipOrders = async (request, response) => {
+    let drive = AuthorizationHelper.authorizeWithGoogle(request.token);
+    let jsonDB = {};
+
+    jsonDB = await getJSONFile(drive);
+    let newDBState = UpdateJsonDb(jsonDB, request.Orders, drive)
+    MoveFileHelper.MoveFiles(drive, request.Orders, request.Action)
+
+    if(request.Action === 'ship'){
+        response.json({Message: `${request.Orders.length} Orders shipped successfully`, Orders: newDBState.Orders})
+    }
+    else if(request.Action === 'cancel'){
+        response.json({Message: `${request.Orders.length} Orders cancelled successfully`, Orders: newDBState.Orders})
+    }
+}
+
 const getJSONFile = (drive, jsonDB) => {
   return drive.files
     .get({ fileId: `${exports.JsonFileId}`, alt: "media" })
@@ -39,6 +57,17 @@ const getJSONFile = (drive, jsonDB) => {
       return response.data;
     });
 };
+
+const UpdateJsonDb = (currentDBState, orders, drive) => {
+    let newOrders = currentDBState.Orders.filter((record) => {
+        return !orders.includes(record.FileId)
+    })
+
+    currentDBState.Orders = newOrders
+    writeToJsonFile(currentDBState, drive)
+    UploadHelper.UpdateJsonFile(drive)
+    return currentDBState
+}
 
 const writeToJsonFile = (jsonString, drive) => {
   fs.writeFileSync("orders.json", JSON.stringify(jsonString));
@@ -87,7 +116,6 @@ const getPdfFiles = async (drive, fileIds) => {
     })
     .then((response) => {
       response.data.files.forEach(function (file) {
-        console.log("Found file: ", file.name, file.id);
         fileIds.push(file.id);
       });
     });
