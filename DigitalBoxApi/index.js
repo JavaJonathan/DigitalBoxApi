@@ -21,12 +21,11 @@ app.use(bodyParser.text({ limit: "500mb" }));
 app.use(bodyParser.raw({ limit: "500mb" }));
 
 app.post("/", async (req, res) => {
-    FileHelper.GetFileIds(req.body);
-  return ControllerHelper.GetFileContents(req.body, res);
+  FileHelper.GetFileIds(JSON.parse(req.body), res);
 });
 
 app.get("/", (req, res) => {
-  return res.json(AuthorizationHelper.getCredentials());
+  res.json(AuthorizationHelper.getCredentials());
 });
 
 // app.get('/:name', (req, res) => {

@@ -9,7 +9,7 @@ exports.authorizeWithGoogle = (token) => {
     credentials.ClientSecret,
     "http://localhost:3000/"
   );
-  oAuth2Client.credentials = JSON.parse(token);
+  oAuth2Client.credentials = token;
   oAuth2Client.apiKey = credentials.ApiKey;
   return google.drive({ version: "v3", auth: oAuth2Client });
 };

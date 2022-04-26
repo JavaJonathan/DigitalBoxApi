@@ -3,32 +3,79 @@ const async = require("async");
 const AuthorizationHelper = require("./AuthorizationHelper");
 const fs = require("fs");
 const CompareHelper = require("./CompareHelper");
+const ContentHelper = require("./ContentHelper");
+const UploadHelper = require("./UploadHelper");
 
-let fileIds = [];
-let jsonDB = {};
+exports.JsonFileId = "1PJZgDZ8G0LzjJkRAeTdPPlYSAxALDrRh";
 
-exports.GetFileIds = async (token) => {
-  let drive = AuthorizationHelper.authorizeWithGoogle(token);
+exports.GetFileIds = async (request, response) => {
+  let drive = AuthorizationHelper.authorizeWithGoogle(request.token);
 
-  await getPdfFiles(drive);
-  await getJSONFile(drive);
-  console.log(fileIds, jsonDB)
-  CompareHelper.CheckForDbUpdates(fileIds, jsonDB)
+  let fileIds = [];
+  let jsonDB = {};
+
+  await getPdfFiles(drive, fileIds);
+  jsonDB = await getJSONFile(drive);
+  let unaccountedFiles = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
+
+  response.json({
+    Orders: filterOrders(request, jsonDB.Orders),
+    Message: `${unaccountedFiles.length} files missing from DB`,
+  });
+
+  for (let counter = 0; counter < unaccountedFiles.length; counter++) {
+    let PDFObject = {};
+    await ContentHelper.DownloadFile(drive, unaccountedFiles[counter]);
+    PDFObject = await ContentHelper.GetText(unaccountedFiles[counter]);
+    jsonDB.Orders.push(PDFObject);
+  }
+  writeToJsonFile(jsonDB, drive);
 };
 
-const getJSONFile = (drive) => {
+const getJSONFile = (drive, jsonDB) => {
   return drive.files
-    .get({ fileId: "1AHF_JQdnpdUm9eJYKgdBg9_q3fvzr4_X", alt: "media" })
+    .get({ fileId: `${exports.JsonFileId}`, alt: "media" })
     .then((response) => {
-      jsonDB = response.data;
+      return response.data;
     });
 };
 
-const writeToJsonFile = (jsonString) => {
-    fs.writeFileSync('order.json', jsonString);
-}
+const writeToJsonFile = (jsonString, drive) => {
+  fs.writeFileSync("orders.json", JSON.stringify(jsonString));
+  UploadHelper.UpdateJsonFile(drive);
+};
 
-const getPdfFiles = async (drive) => {
+const filterOrders = (request, items) => {
+  if (request.Filter === "") return items;
+
+  return items.filter((item) => {
+    return shouldBeFiltered(item, request);
+  });
+};
+
+const shouldBeFiltered = (item, request) => {
+  console.log(request.Filter);
+
+  for (counter = 0; counter < item.FileContents.length; counter++) {
+    console.log(
+      item.FileContents[counter].Title.replace(/\s/g, "").toLowerCase()
+    );
+    if (
+      //we needed to remove the spaces due to search results not returning
+      item.FileContents[counter].Title.replace(/\s/g, "")
+        .toLowerCase()
+        .includes(request.Filter.replace(/\s/g, "").toLowerCase()) ||
+      item.FileContents[counter].OrderNumber.replace(/\s/g, "")
+        .toLowerCase()
+        .includes(request.Filter.replace(/\s/g, "").toLowerCase())
+    ) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const getPdfFiles = async (drive, fileIds) => {
   var pageToken = null;
 
   return drive.files
