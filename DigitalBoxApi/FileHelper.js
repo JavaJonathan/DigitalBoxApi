@@ -17,7 +17,6 @@ exports.GetOrdersFromFile = async (request, response) => {
 
   await getPdfFiles(drive, fileIds);
   jsonDB = await getJSONFile(drive);
-  console.log(fileIds)
   let unaccountedFiles = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
 
   response.json({
@@ -86,9 +85,6 @@ const shouldBeFiltered = (item, request) => {
   console.log(request.Filter);
 
   for (counter = 0; counter < item.FileContents.length; counter++) {
-    console.log(
-      item.FileContents[counter].Title.replace(/\s/g, "").toLowerCase()
-    );
     if (
       //we needed to remove the spaces due to search results not returning
       item.FileContents[counter].Title.replace(/\s/g, "")

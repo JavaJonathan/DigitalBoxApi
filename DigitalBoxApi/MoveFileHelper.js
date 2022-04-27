@@ -10,12 +10,10 @@ exports.MoveFiles = async (drive, orders, action) => {
   if (action === "cancel") folderId = cancelledFolderId;
   else if (action === "ship") folderId = shippedFolderId;
 
-  console.log(orders)
-
   for (let index = 0; index < orders.length; index++) {
     await drive.files.update(
       {
-        fileId: orders[0],
+        fileId: orders[index],
         addParents: folderId,
         removeParents: "1_-sgosO7Pyq5b5ofxrD7z1Bb5uck8q8Z",
         fields: "id, parents",
@@ -24,7 +22,6 @@ exports.MoveFiles = async (drive, orders, action) => {
         if (err) {
           console.log(err);
         } else {
-          // File moved.
         }
       }
     );
