@@ -28,6 +28,10 @@ app.post("/cancel", async (req, res) => {
   FileHelper.CancelOrShipOrders(JSON.parse(req.body), res);
 });
 
+app.post("/ship", async (req, res) => {
+    FileHelper.CancelOrShipOrders(JSON.parse(req.body), res);
+  });
+
 app.get("/", (req, res) => {
   res.json(AuthorizationHelper.getCredentials());
 });

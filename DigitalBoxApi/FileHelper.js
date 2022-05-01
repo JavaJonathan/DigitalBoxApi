@@ -34,7 +34,7 @@ exports.GetOrdersFromFile = async (request, response) => {
 
   for (let counter = 0; counter < unaccountedFiles.length; counter++) {
     let PDFObject = {};
-    await ContentHelper.DownloadFile(drive, unaccountedFiles[counter]);
+    await ContentHelper.DownloadFile(drive, unaccountedFiles[counter], "photo.pdf");
     PDFObject = await ContentHelper.GetText(unaccountedFiles[counter]);
     jsonDB.Orders.push(PDFObject);
   }
@@ -50,8 +50,9 @@ exports.CancelOrShipOrders = async (request, response) => {
   MoveFileHelper.MoveFiles(drive, request.Orders, request.Action);
 
   if (request.Action === "ship") {
+    await downloadShippedFiles(drive, request.Orders)
     response.json({
-      Message: `${request.Orders.length} Orders shipped successfully`,
+      Message: `${request.Orders.length} order(s) shipped successfully`,
       Orders: newDBState.Orders.sort((a, b) => {
         return (
           Date.parse(a.FileContents[0].ShipDate) -
@@ -61,7 +62,7 @@ exports.CancelOrShipOrders = async (request, response) => {
     });
   } else if (request.Action === "cancel") {
     response.json({
-      Message: `${request.Orders.length} Orders cancelled successfully`,
+      Message: `${request.Orders.length} order(s) cancelled successfully`,
       Orders: newDBState.Orders.sort((a, b) => {
         return (
           Date.parse(a.FileContents[0].ShipDate) -
@@ -71,6 +72,12 @@ exports.CancelOrShipOrders = async (request, response) => {
     });
   }
 };
+
+const downloadShippedFiles = async (drive, orders) => {
+    for (let counter = 0; counter < orders.length; counter++) {
+        await ContentHelper.DownloadFile(drive, orders[counter], `C:\\Users\\jonat\\Downloads\\ShippedItems`);
+      }
+}
 
 const getJSONFile = (drive, jsonDB) => {
   return drive.files

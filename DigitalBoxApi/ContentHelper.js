@@ -4,9 +4,21 @@ const { google } = require("googleapis");
 const { PdfReader } = require("pdfreader");
 const express = require("express");
 
-exports.DownloadFile = async (drive, fileIdParam) => {
+exports.DownloadFile = async (drive, fileIdParam, filePath) => {
   let progress = 0;
-  let dest = fs.createWriteStream("photo.pdf");
+
+  if (!fs.existsSync(filePath)){
+    fs.mkdirSync(filePath);
+}
+
+let dest = ''
+
+if(filePath === 'photo.pdf') {
+  dest = fs.createWriteStream(filePath)
+}
+else{
+  dest = fs.createWriteStream(`${filePath}\\${fileIdParam}.pdf`);
+}
 
   return new Promise((resolve, reject) => {
     drive.files
