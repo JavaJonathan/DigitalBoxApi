@@ -7,18 +7,17 @@ const express = require("express");
 exports.DownloadFile = async (drive, fileIdParam, filePath) => {
   let progress = 0;
 
-  if (!fs.existsSync(filePath)){
+  if (!fs.existsSync(filePath)) {
     fs.mkdirSync(filePath);
-}
+  }
 
-let dest = ''
+  let dest = "";
 
-if(filePath === 'photo.pdf') {
-  dest = fs.createWriteStream(filePath)
-}
-else{
-  dest = fs.createWriteStream(`${filePath}\\${fileIdParam}.pdf`);
-}
+  if (filePath === "photo.pdf") {
+    dest = fs.createWriteStream(filePath);
+  } else {
+    dest = fs.createWriteStream(`${filePath}\\${fileIdParam}.pdf`);
+  }
 
   return new Promise((resolve, reject) => {
     drive.files

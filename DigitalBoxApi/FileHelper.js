@@ -6,6 +6,7 @@ const CompareHelper = require("./CompareHelper");
 const ContentHelper = require("./ContentHelper");
 const UploadHelper = require("./UploadHelper");
 const MoveFileHelper = require("./MoveFileHelper");
+const { json } = require("body-parser");
 
 exports.JsonFileId = "1Es2hHSXsd2ZGL6pnPKKFohUgYTj_4AeZ";
 
@@ -14,10 +15,25 @@ exports.GetOrdersFromFile = async (request, response) => {
 
   let fileIds = [];
   let jsonDB = {};
+  let unaccountedFiles = [];
+  let message = "";
 
   await getPdfFiles(drive, fileIds);
   jsonDB = await getJSONFile(drive);
-  let unaccountedFiles = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
+
+  if (jsonDB.Updating === true) {
+    console.log('made it to if block')
+    message = `Your search is missing some orders. It should be updated within a few minutes.`;
+  } else {
+    unaccountedFiles = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
+    message = `${unaccountedFiles.length} files missing from DB`;
+  }
+
+  if (unaccountedFiles.length > 0) {
+      console.log('made it')
+    jsonDB.Updating = true;
+    writeToJsonFile(jsonDB, drive);
+  }
 
   response.json({
     Orders: filterOrders(
@@ -29,16 +45,28 @@ exports.GetOrdersFromFile = async (request, response) => {
         );
       })
     ),
-    Message: `${unaccountedFiles.length} files missing from DB`,
+    Message: message,
   });
+
+  let newOrders = [];
 
   for (let counter = 0; counter < unaccountedFiles.length; counter++) {
     let PDFObject = {};
-    await ContentHelper.DownloadFile(drive, unaccountedFiles[counter], "photo.pdf");
+    await ContentHelper.DownloadFile(
+      drive,
+      unaccountedFiles[counter],
+      "photo.pdf"
+    );
     PDFObject = await ContentHelper.GetText(unaccountedFiles[counter]);
-    jsonDB.Orders.push(PDFObject);
+    newOrders.push(PDFObject);
   }
-  writeToJsonFile(jsonDB, drive);
+
+  if (newOrders.length > 0) {
+    jsonDB = await getJSONFile(drive);
+    jsonDB.Orders.push(...newOrders);
+    jsonDB.Updating = false;
+    writeToJsonFile(jsonDB, drive);
+  }
 };
 
 exports.CancelOrShipOrders = async (request, response) => {
@@ -50,7 +78,7 @@ exports.CancelOrShipOrders = async (request, response) => {
   MoveFileHelper.MoveFiles(drive, request.Orders, request.Action);
 
   if (request.Action === "ship") {
-    await downloadShippedFiles(drive, request.Orders)
+    await downloadShippedFiles(drive, request.Orders);
     response.json({
       Message: `${request.Orders.length} order(s) shipped successfully`,
       Orders: newDBState.Orders.sort((a, b) => {
@@ -74,10 +102,14 @@ exports.CancelOrShipOrders = async (request, response) => {
 };
 
 const downloadShippedFiles = async (drive, orders) => {
-    for (let counter = 0; counter < orders.length; counter++) {
-        await ContentHelper.DownloadFile(drive, orders[counter], `C:\\Users\\jonat\\Downloads\\ShippedItems`);
-      }
-}
+  for (let counter = 0; counter < orders.length; counter++) {
+    await ContentHelper.DownloadFile(
+      drive,
+      orders[counter],
+      `C:\\Users\\jonat\\Downloads\\ShippedItems`
+    );
+  }
+};
 
 const getJSONFile = (drive, jsonDB) => {
   return drive.files
