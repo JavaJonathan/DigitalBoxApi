@@ -22,7 +22,6 @@ exports.GetOrdersFromFile = async (request, response) => {
   jsonDB = await getJSONFile(drive);
 
   if (jsonDB.Updating === true) {
-    console.log('made it to if block')
     message = `Your search is missing some orders. It should be updated within a few minutes.`;
   } else {
     unaccountedFiles = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
@@ -30,7 +29,6 @@ exports.GetOrdersFromFile = async (request, response) => {
   }
 
   if (unaccountedFiles.length > 0) {
-      console.log('made it')
     jsonDB.Updating = true;
     writeToJsonFile(jsonDB, drive);
   }
