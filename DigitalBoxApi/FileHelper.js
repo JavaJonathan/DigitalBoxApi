@@ -16,20 +16,21 @@ exports.GetOrdersFromFile = async (request, response) => {
   let fileIds = [];
   let jsonDB = {};
   let unaccountedFiles = [];
-  let message = "";
+  let message = `Your search results are up to date as of ${new Date().toLocaleString()}`;
 
   await getPdfFiles(drive, fileIds);
   jsonDB = await getJSONFile(drive);
 
   if (jsonDB.Updating === true) {
-    message = `Your search is missing some orders. It should be updated within a few minutes.`;
+    message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
   } else {
     unaccountedFiles = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
-    message = `${unaccountedFiles.length} files missing from DB`;
   }
 
   if (unaccountedFiles.length > 0) {
     jsonDB.Updating = true;
+    jsonDB.UpdateFinishTime = getUpdateFinishTime(unaccountedFiles.length)
+    message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
     writeToJsonFile(jsonDB, drive);
   }
 
@@ -66,6 +67,13 @@ exports.GetOrdersFromFile = async (request, response) => {
     writeToJsonFile(jsonDB, drive);
   }
 };
+
+const getUpdateFinishTime = (numberOfItems) => {
+    let date = new Date()
+    date.setMinutes(date.getMinutes() + Math.ceil(numberOfItems / 120))
+    console.log(date.toLocaleString())
+    return date.toLocaleString()
+}
 
 exports.CancelOrShipOrders = async (request, response) => {
   let drive = AuthorizationHelper.authorizeWithGoogle(request.token);
@@ -134,6 +142,7 @@ const writeToJsonFile = (jsonString, drive) => {
 };
 
 const filterOrders = (request, items) => {
+    console.log(request.Filter)
   if (request.Filter === "") return items;
 
   return items.filter((item) => {
