@@ -11,12 +11,13 @@ const { json } = require("body-parser");
 exports.JsonFileId = "1Es2hHSXsd2ZGL6pnPKKFohUgYTj_4AeZ";
 
 exports.GetOrdersFromFile = async (request, response) => {
-  let drive = AuthorizationHelper.authorizeWithGoogle(request.token);
-
   let fileIds = [];
   let jsonDB = {};
-  let unaccountedFiles = [];
+  let newFiles = [];
+  let removedFiles = [];
   let message = `Your search results are up to date as of ${new Date().toLocaleString()}`;
+
+  let drive = AuthorizationHelper.authorizeWithGoogle(request.token);
 
   await getPdfFiles(drive, fileIds);
   jsonDB = await getJSONFile(drive);
@@ -24,13 +25,25 @@ exports.GetOrdersFromFile = async (request, response) => {
   if (jsonDB.Updating === true) {
     message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
   } else {
-    unaccountedFiles = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
+    let files = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
+    newFiles = files[0];
+    removedFiles = files[1];
   }
 
-  if (unaccountedFiles.length > 0) {
-    jsonDB.Updating = true;
-    jsonDB.UpdateFinishTime = getUpdateFinishTime(unaccountedFiles.length)
-    message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
+  if (removedFiles.length > 0 || newFiles.length > 0) {
+    if (removedFiles.length > 0) {
+        removedFiles.forEach(removedFile => {
+            jsonDB.Orders = jsonDB.Orders.filter(order => {
+                return order.FileId !== removedFile
+            })
+        })
+    }
+
+    if (newFiles.length > 0) {
+      jsonDB.Updating = true;
+      jsonDB.UpdateFinishTime = getUpdateFinishTime(newFiles.length);
+      message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
+    }
     writeToJsonFile(jsonDB, drive);
   }
 
@@ -49,14 +62,14 @@ exports.GetOrdersFromFile = async (request, response) => {
 
   let newOrders = [];
 
-  for (let counter = 0; counter < unaccountedFiles.length; counter++) {
+  for (let counter = 0; counter < newFiles.length; counter++) {
     let PDFObject = {};
     await ContentHelper.DownloadFile(
       drive,
-      unaccountedFiles[counter],
+      newFiles[counter],
       "photo.pdf"
     );
-    PDFObject = await ContentHelper.GetText(unaccountedFiles[counter]);
+    PDFObject = await ContentHelper.GetText(newFiles[counter]);
     newOrders.push(PDFObject);
   }
 
@@ -69,11 +82,11 @@ exports.GetOrdersFromFile = async (request, response) => {
 };
 
 const getUpdateFinishTime = (numberOfItems) => {
-    let date = new Date()
-    date.setMinutes(date.getMinutes() + Math.ceil(numberOfItems / 120))
-    console.log(date.toLocaleString())
-    return date.toLocaleString()
-}
+  let date = new Date();
+  date.setMinutes(date.getMinutes() + Math.ceil(numberOfItems / 120));
+  console.log(date.toLocaleString());
+  return date.toLocaleString();
+};
 
 exports.CancelOrShipOrders = async (request, response) => {
   let drive = AuthorizationHelper.authorizeWithGoogle(request.token);
@@ -142,7 +155,7 @@ const writeToJsonFile = (jsonString, drive) => {
 };
 
 const filterOrders = (request, items) => {
-    console.log(request.Filter)
+  console.log(request.Filter);
   if (request.Filter === "") return items;
 
   return items.filter((item) => {
