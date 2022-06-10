@@ -1,6 +1,7 @@
 const { google } = require("googleapis");
 const async = require("async");
 const AuthorizationHelper = require("./AuthorizationHelper");
+const LogHelper = require("./LogHelper");
 const fs = require("fs");
 const CompareHelper = require("./CompareHelper");
 const ContentHelper = require("./ContentHelper");
@@ -8,7 +9,7 @@ const UploadHelper = require("./UploadHelper");
 const MoveFileHelper = require("./MoveFileHelper");
 const { json } = require("body-parser");
 
-exports.JsonFileId = "1Es2hHSXsd2ZGL6pnPKKFohUgYTj_4AeZ";
+exports.JsonFileId = "1tboD-ZunulU7AiPksoFSXHWIEljey11I";
 
 exports.GetOrdersFromFile = async (request, response) => {
   let fileIds = [];
@@ -16,11 +17,17 @@ exports.GetOrdersFromFile = async (request, response) => {
   let newFiles = [];
   let removedFiles = [];
   let message = `Your search results are up to date as of ${new Date().toLocaleString()}`;
+  let drive = {};
 
-  let drive = AuthorizationHelper.authorizeWithGoogle(request.token);
-
-  await getPdfFiles(drive, fileIds);
-  jsonDB = await getJSONFile(drive);
+  try {
+    drive = AuthorizationHelper.authorizeWithGoogle(request.token);
+    await getPdfFiles(drive, fileIds);
+    jsonDB = await getJSONFile(drive);
+  } catch (e) {
+    respondToClientWithError(response);
+    LogHelper.LogError(e);
+    return;
+  }
 
   if (jsonDB.Updating === true) {
     message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
@@ -31,13 +38,7 @@ exports.GetOrdersFromFile = async (request, response) => {
   }
 
   if (removedFiles.length > 0 || newFiles.length > 0) {
-    if (removedFiles.length > 0) {
-        removedFiles.forEach(removedFile => {
-            jsonDB.Orders = jsonDB.Orders.filter(order => {
-                return order.FileId !== removedFile
-            })
-        })
-    }
+    jsonDB = checkForRemovedFiles(jsonDB, removedFiles);
 
     if (newFiles.length > 0) {
       jsonDB.Updating = true;
@@ -47,54 +48,24 @@ exports.GetOrdersFromFile = async (request, response) => {
     writeToJsonFile(jsonDB, drive);
   }
 
-  response.json({
-    Orders: filterOrders(
-      request,
-      jsonDB.Orders.sort((a, b) => {
-        return (
-          Date.parse(a.FileContents[0].ShipDate) -
-          Date.parse(b.FileContents[0].ShipDate)
-        );
-      })
-    ),
-    Message: message,
-  });
-
-  let newOrders = [];
-
-  for (let counter = 0; counter < newFiles.length; counter++) {
-    let PDFObject = {};
-    await ContentHelper.DownloadFile(
-      drive,
-      newFiles[counter],
-      "photo.pdf"
-    );
-    PDFObject = await ContentHelper.GetText(newFiles[counter]);
-    newOrders.push(PDFObject);
-  }
-
-  if (newOrders.length > 0) {
-    jsonDB = await getJSONFile(drive);
-    jsonDB.Orders.push(...newOrders);
-    jsonDB.Updating = false;
-    writeToJsonFile(jsonDB, drive);
-  }
-};
-
-const getUpdateFinishTime = (numberOfItems) => {
-  let date = new Date();
-  date.setMinutes(date.getMinutes() + Math.ceil(numberOfItems / 120));
-  console.log(date.toLocaleString());
-  return date.toLocaleString();
+  respondToClient(response, jsonDB, request, message);
+  updateDBWithNewItems(newFiles, jsonDB, drive);
 };
 
 exports.CancelOrShipOrders = async (request, response) => {
-  let drive = AuthorizationHelper.authorizeWithGoogle(request.token);
+  let drive = {};
   let jsonDB = {};
+  let newDBState = {};
 
-  jsonDB = await getJSONFile(drive);
-  let newDBState = UpdateJsonDb(jsonDB, request.Orders, drive);
-  MoveFileHelper.MoveFiles(drive, request.Orders, request.Action);
+  try {
+    drive = AuthorizationHelper.authorizeWithGoogle(request.token);
+    jsonDB = await getJSONFile(drive);
+    newDBState = UpdateJsonDb(jsonDB, request.Orders, drive);
+    MoveFileHelper.MoveFiles(drive, request.Orders, request.Action);
+  } catch (e) {
+    LogHelper.LogError(e);
+    respondToClientWithError(response);
+  }
 
   if (request.Action === "ship") {
     await downloadShippedFiles(drive, request.Orders);
@@ -118,6 +89,71 @@ exports.CancelOrShipOrders = async (request, response) => {
       }),
     });
   }
+};
+
+const respondToClientWithError = (response) => {
+  response.json({
+    Orders: [],
+    Message: "Sorry, we encountered an error. Please try again.",
+  });
+};
+
+const respondToClient = (response, jsonDB, request, message) => {
+  response.json({
+    Orders: filterOrders(
+      request,
+      jsonDB.Orders.sort((a, b) => {
+        return (
+          Date.parse(a.FileContents[0].ShipDate) -
+          Date.parse(b.FileContents[0].ShipDate)
+        );
+      })
+    ),
+    Message: message,
+  });
+};
+
+const checkForRemovedFiles = (jsonDB, removedFiles) => {
+  if (removedFiles.length > 0) {
+    removedFiles.forEach((removedFile) => {
+      jsonDB.Orders = jsonDB.Orders.filter((order) => {
+        return order.FileId !== removedFile;
+      });
+    });
+  }
+
+  return jsonDB;
+};
+
+const updateDBWithNewItems = async (newFiles, jsonDB, drive) => {
+  let newOrders = [];
+
+  try {
+    for (let counter = 0; counter < newFiles.length; counter++) {
+      let PDFObject = {};
+      await ContentHelper.DownloadFile(drive, newFiles[counter], "photo.pdf");
+      PDFObject = await ContentHelper.GetText(newFiles[counter]);
+      newOrders.push(PDFObject);
+    }
+  } catch (e) {
+    jsonDB.Updating = false;
+    writeToJsonFile(jsonDB, drive);
+    LogHelper.LogError(e);
+  }
+
+  if (newOrders.length > 0) {
+    jsonDB = await getJSONFile(drive);
+    jsonDB.Orders.push(...newOrders);
+    jsonDB.Updating = false;
+    writeToJsonFile(jsonDB, drive);
+  }
+};
+
+const getUpdateFinishTime = (numberOfItems) => {
+  let date = new Date();
+  date.setMinutes(date.getMinutes() + Math.ceil(numberOfItems / 120));
+  console.log(date.toLocaleString());
+  return date.toLocaleString();
 };
 
 const downloadShippedFiles = async (drive, orders) => {
@@ -185,10 +221,9 @@ const getPdfFiles = async (drive, fileIds) => {
 
   return drive.files
     .list({
-      q: "'1_-sgosO7Pyq5b5ofxrD7z1Bb5uck8q8Z' in parents and trashed=false",
-      fields: "nextPageToken, files(id, name)",
-      spaces: "drive",
-      pageToken: pageToken,
+      q: "'1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU' in parents and trashed=false",
+      fields: "files(id, name)",
+      spaces: "drive"
     })
     .then((response) => {
       response.data.files.forEach(function (file) {
