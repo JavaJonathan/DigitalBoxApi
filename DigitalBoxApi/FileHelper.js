@@ -151,7 +151,7 @@ const updateDBWithNewItems = async (newFiles, jsonDB, drive) => {
 
 const getUpdateFinishTime = (numberOfItems) => {
   let date = new Date();
-  date.setMinutes(date.getMinutes() + Math.ceil(numberOfItems / 120));
+  date.setMinutes(date.getMinutes() + Math.ceil(numberOfItems / 90));
   console.log(date.toLocaleString());
   return date.toLocaleString();
 };
@@ -166,7 +166,7 @@ const downloadShippedFiles = async (drive, orders) => {
   }
 };
 
-const getJSONFile = (drive, jsonDB) => {
+const getJSONFile = (drive) => {
   return drive.files
     .get({ fileId: `${exports.JsonFileId}`, alt: "media" })
     .then((response) => {
@@ -222,8 +222,10 @@ const getPdfFiles = async (drive, fileIds) => {
   return drive.files
     .list({
       q: "'1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU' in parents and trashed=false",
-      fields: "files(id, name)",
-      spaces: "drive"
+      fields: "nextPageToken, files(id, name)",
+      spaces: "drive",
+      pageToken: pageToken,
+      pageSize: 1000
     })
     .then((response) => {
       response.data.files.forEach(function (file) {
