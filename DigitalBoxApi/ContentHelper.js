@@ -80,7 +80,7 @@ exports.GetText = async (fileId) => {
 
   return new Promise((resolve, reject) => {
     new PdfReader().parseFileItems(
-      "C:\\Users\\jonat\\Documents\\JSProjects\\DigitalBoxApi\\DigitalBoxApi\\photo.pdf",
+      "photo.pdf",
       (err, item) => {
         if (err) console.error("error:", err);
         else if (!item) {

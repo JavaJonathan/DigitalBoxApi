@@ -161,7 +161,7 @@ const downloadShippedFiles = async (drive, orders) => {
     await ContentHelper.DownloadFile(
       drive,
       orders[counter],
-      `C:\\Users\\jonat\\Downloads\\ShippedItems`
+      JSON.parse(fs.readFileSync("botConfigs.json")).DownloadFolderPath
     );
   }
 };
