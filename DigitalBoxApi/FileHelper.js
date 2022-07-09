@@ -8,7 +8,6 @@ const ContentHelper = require("./ContentHelper");
 const UploadHelper = require("./UploadHelper");
 const MoveFileHelper = require("./MoveFileHelper");
 const { json } = require("body-parser");
-const { off } = require("process");
 
 exports.JsonFileId = "1tboD-ZunulU7AiPksoFSXHWIEljey11I";
 
@@ -61,7 +60,7 @@ exports.CancelOrShipOrders = async (request, response) => {
   try {
     drive = AuthorizationHelper.authorizeWithGoogle(request.token);
     jsonDB = await getJSONFile(drive);
-    newDBState = UpdateJsonDb(request.Orders, drive);
+    newDBState = UpdateJsonDb(jsonDB, request.Orders, drive);
     MoveFileHelper.MoveFiles(drive, request.Orders, request.Action);
   } catch (e) {
     LogHelper.LogError(e);
@@ -175,17 +174,15 @@ const getJSONFile = (drive) => {
     });
 };
 
-const UpdateJsonDb = (orders, drive) => {
-  let jsonDB = await getJSONFile(drive);
-
-  let newOrders = jsonDB.Orders.filter((record) => {
+const UpdateJsonDb = (currentDBState, orders, drive) => {
+  let newOrders = currentDBState.Orders.filter((record) => {
     return !orders.includes(record.FileId);
   });
 
-  jsonDB.Orders = newOrders;
-  writeToJsonFile(jsonDB, drive);
+  currentDBState.Orders = newOrders;
+  writeToJsonFile(currentDBState, drive);
   UploadHelper.UpdateJsonFile(drive);
-  return jsonDB;
+  return currentDBState;
 };
 
 const writeToJsonFile = (jsonString, drive) => {
@@ -220,32 +217,19 @@ const shouldBeFiltered = (item, request) => {
 };
 
 const getPdfFiles = async (drive, fileIds) => {
-  let pageToken = null;
-  let fetch = true;
+  var pageToken = null;
 
-  return new Promise(async (resolve) => {
-    while (fetch) {
-      await drive.files
-        .list({
-          q: "'1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU' in parents and trashed=false",
-          fields: "nextPageToken, files(id, name)",
-          spaces: "drive",
-          pageToken: pageToken,
-          pageSize: 1000,
-        })
-        .then((response) => {
-          response.data.files.forEach(function (file) {
-            fileIds.push(file.id);
-          });
-          console.log(response);
-
-          pageToken = response.nextPageToken;
-
-          if (!pageToken) {
-            fetch = false;
-            resolve("Completed");
-          }
-        });
-    }
-  });
+  return drive.files
+    .list({
+      q: "'1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU' in parents and trashed=false",
+      fields: "nextPageToken, files(id, name)",
+      spaces: "drive",
+      pageToken: pageToken,
+      pageSize: 1000
+    })
+    .then((response) => {
+      response.data.files.forEach(function (file) {
+        fileIds.push(file.id);
+      });
+    });
 };
