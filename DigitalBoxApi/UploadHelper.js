@@ -13,7 +13,8 @@ exports.UpdateJsonFile = async (drive) => {
       mimeType: "text/plain",
       body: fs.createReadStream("orders.json"),
     };
-    drive.files.update(
+    return new Promise((resolve, reject) => { 
+      drive.files.update(
       {
         fileId: `${FileHelper.JsonFileId}`,
         resource: fileMetadata,
@@ -25,11 +26,12 @@ exports.UpdateJsonFile = async (drive) => {
           // Handle error
           console.error(err);
         } else {
-          console.log("File Id: ", file.data.id);
+          resolve(console.log("File Id: ", file.data.id));
         }
       }
     );
-  } catch (e) {
+  })
+ } catch (e) {
     LogHelper.LogError(e);
   }
 };

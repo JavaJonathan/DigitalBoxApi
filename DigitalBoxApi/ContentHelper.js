@@ -28,10 +28,12 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
       .then((res) => {
         res.data
           .on("end", () => {
-            resolve(console.log("Done downloading file."));
+            resolve(() => {
+              res.data.end()
+            });
           })
           .on("error", (err) => {
-            console.error("Error downloading file.");
+            reject(console.log('Error downloading file.'))
           })
           .on("data", (d) => {
             progress += d.length;
@@ -42,7 +44,7 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
             }
           })
           .pipe(dest);
-      });
+      })
   });
 };
 

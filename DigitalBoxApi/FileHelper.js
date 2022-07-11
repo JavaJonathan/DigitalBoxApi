@@ -8,6 +8,7 @@ const ContentHelper = require("./ContentHelper");
 const UploadHelper = require("./UploadHelper");
 const MoveFileHelper = require("./MoveFileHelper");
 const { json } = require("body-parser");
+const { off } = require("process");
 
 exports.JsonFileId = "1tboD-ZunulU7AiPksoFSXHWIEljey11I";
 
@@ -45,11 +46,11 @@ exports.GetOrdersFromFile = async (request, response) => {
       jsonDB.UpdateFinishTime = getUpdateFinishTime(newFiles.length);
       message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
     }
-    writeToJsonFile(jsonDB, drive);
+    await writeToJsonFile(jsonDB, drive);
   }
 
   respondToClient(response, jsonDB, request, message);
-  updateDBWithNewItems(newFiles, jsonDB, drive);
+  await updateDBWithNewItems(newFiles, jsonDB, drive);
 };
 
 exports.CancelOrShipOrders = async (request, response) => {
@@ -60,7 +61,7 @@ exports.CancelOrShipOrders = async (request, response) => {
   try {
     drive = AuthorizationHelper.authorizeWithGoogle(request.token);
     jsonDB = await getJSONFile(drive);
-    newDBState = UpdateJsonDb(jsonDB, request.Orders, drive);
+    newDBState = UpdateJsonDb(request.Orders, drive);
     MoveFileHelper.MoveFiles(drive, request.Orders, request.Action);
   } catch (e) {
     LogHelper.LogError(e);
@@ -131,21 +132,25 @@ const updateDBWithNewItems = async (newFiles, jsonDB, drive) => {
   try {
     for (let counter = 0; counter < newFiles.length; counter++) {
       let PDFObject = {};
-      await ContentHelper.DownloadFile(drive, newFiles[counter], "photo.pdf");
+      try {
+        await ContentHelper.DownloadFile(drive, newFiles[counter], "photo.pdf");
+      }
+      catch(e) { console.log(e); continue; }
       PDFObject = await ContentHelper.GetText(newFiles[counter]);
       newOrders.push(PDFObject);
     }
   } catch (e) {
     jsonDB.Updating = false;
-    writeToJsonFile(jsonDB, drive);
+    await writeToJsonFile(jsonDB, drive);
     LogHelper.LogError(e);
+    console.log(e)
   }
 
   if (newOrders.length > 0) {
     jsonDB = await getJSONFile(drive);
     jsonDB.Orders.push(...newOrders);
     jsonDB.Updating = false;
-    writeToJsonFile(jsonDB, drive);
+    await writeToJsonFile(jsonDB, drive);
   }
 };
 
@@ -181,13 +186,12 @@ const UpdateJsonDb = (currentDBState, orders, drive) => {
 
   currentDBState.Orders = newOrders;
   writeToJsonFile(currentDBState, drive);
-  UploadHelper.UpdateJsonFile(drive);
   return currentDBState;
 };
 
-const writeToJsonFile = (jsonString, drive) => {
+const writeToJsonFile = async (jsonString, drive) => {
   fs.writeFileSync("orders.json", JSON.stringify(jsonString));
-  UploadHelper.UpdateJsonFile(drive);
+  return UploadHelper.UpdateJsonFile(drive);
 };
 
 const filterOrders = (request, items) => {
@@ -217,19 +221,32 @@ const shouldBeFiltered = (item, request) => {
 };
 
 const getPdfFiles = async (drive, fileIds) => {
-  var pageToken = null;
+  let pageToken = null;
+  let fetch = true;
 
-  return drive.files
-    .list({
-      q: "'1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU' in parents and trashed=false",
-      fields: "nextPageToken, files(id, name)",
-      spaces: "drive",
-      pageToken: pageToken,
-      pageSize: 1000
-    })
-    .then((response) => {
-      response.data.files.forEach(function (file) {
-        fileIds.push(file.id);
-      });
-    });
+  return new Promise(async (resolve) => {
+    while (fetch) {
+      await drive.files
+        .list({
+          q: "'1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU' in parents and trashed=false",
+          fields: "nextPageToken, files(id, name)",
+          spaces: "drive",
+          pageToken: pageToken,
+          pageSize: 1000,
+        })
+        .then((response) => {
+          response.data.files.forEach(function (file) {
+            fileIds.push(file.id);
+          });
+          console.log(response);
+
+          pageToken = response.nextPageToken;
+
+          if (!pageToken) {
+            fetch = false;
+            resolve("Completed");
+          }
+        });
+    }
+  });
 };
