@@ -47,10 +47,10 @@ exports.GetOrdersFromFile = async (request, response) => {
       message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
     }
     await writeToJsonFile(jsonDB, drive);
+    updateDBWithNewItems(newFiles, jsonDB, drive);
   }
 
   respondToClient(response, jsonDB, request, message);
-  await updateDBWithNewItems(newFiles, jsonDB, drive);
 };
 
 exports.CancelOrShipOrders = async (request, response) => {
@@ -238,9 +238,7 @@ const getPdfFiles = async (drive, fileIds) => {
           response.data.files.forEach(function (file) {
             fileIds.push(file.id);
           });
-          console.log(response);
-
-          pageToken = response.nextPageToken;
+          pageToken = response.data.nextPageToken;
 
           if (!pageToken) {
             fetch = false;
