@@ -29,11 +29,12 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
         res.data
           .on("end", () => {
             resolve(() => {
+              console.log("Done downloading file.")
               res.data.end()
             });
           })
           .on("error", (err) => {
-            reject(console.log('Error downloading file.'))
+            reject(console.error("Error downloading file."))
           })
           .on("data", (d) => {
             progress += d.length;

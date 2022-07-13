@@ -61,11 +61,31 @@ exports.CancelOrShipOrders = async (request, response) => {
   try {
     drive = AuthorizationHelper.authorizeWithGoogle(request.token);
     jsonDB = await getJSONFile(drive);
-    newDBState = UpdateJsonDb(request.Orders, drive);
+
+    //we need to ensure the files hasn't already been moved causing further issues
+    let allFilesExist = CompareHelper.EnsureFilesExist(request.Orders, jsonDB)
+
+    if(!allFilesExist) {
+      response.json({
+        Message: `Some of your orders have already been shipped or cancelled. Please try again.`,
+        Orders: jsonDB.Orders.sort((a, b) => {
+          return (
+            Date.parse(a.FileContents[0].ShipDate) -
+            Date.parse(b.FileContents[0].ShipDate)
+          );
+        }),
+      });
+
+      return;
+    }
+
+    newDBState = UpdateJsonDb(jsonDB, request.Orders, drive);
     MoveFileHelper.MoveFiles(drive, request.Orders, request.Action);
   } catch (e) {
+    console.log(e)
     LogHelper.LogError(e);
     respondToClientWithError(response);
+    return;
   }
 
   if (request.Action === "ship") {

@@ -25,6 +25,19 @@ exports.CheckForDbUpdates = (fileIds, jsonDB) => {
   });
   return [unaccountedFiles, removedFiles];
 };
+
+exports.EnsureFilesExist = (orders, jsonDB) => {
+  let fileIdDictionary = {};
+
+  createFileIdDictionary(jsonDB.Orders, fileIdDictionary);
+
+  orders.forEach(order => {
+    if (!fileIdDictionary.hasOwnProperty(order)) {
+      return false;
+    }
+  })
+  return true;
+}
 //we create a dictionary with the fileIds for quick searching
 const createFileIdDictionary = (orders, fileIdDictionary) =>
   orders.forEach((order) => {
