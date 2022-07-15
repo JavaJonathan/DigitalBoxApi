@@ -22,7 +22,7 @@ exports.MoveFiles = async (drive, orders, action) => {
         },
         function (err, file) {
           if (err) {
-            console.log(err);
+            throw err;
           } else {
           }
         }
