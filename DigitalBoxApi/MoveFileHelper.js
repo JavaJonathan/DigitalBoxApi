@@ -11,9 +11,9 @@ exports.MoveFiles = async (drive, orders, action) => {
   if (action === "cancel") folderId = cancelledFolderId;
   else if (action === "ship") folderId = shippedFolderId;
 
-  try {
-    for (let index = 0; index < orders.length; index++) {
-      await drive.files.update(
+  for (let index = 0; index < orders.length; index++) {
+    await drive.files
+      .update(
         {
           fileId: orders[index],
           addParents: folderId,
@@ -23,12 +23,13 @@ exports.MoveFiles = async (drive, orders, action) => {
         function (err, file) {
           if (err) {
             throw err;
-          } else {
           }
         }
-      );
-    }
-  } catch (e) {
-    LogHelper.LogError(e);
+      )
+      .catch((error) => {
+        // here we will need to handle any failures
+        //we can save a list of file ids in the db that were supposed to be deleted from the db so the app knows to still filter out those files
+        throw error;
+      });
   }
 };

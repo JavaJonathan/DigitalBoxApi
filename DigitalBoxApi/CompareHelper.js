@@ -27,18 +27,18 @@ exports.CheckForDbUpdates = (fileIds, jsonDB) => {
 };
 
 exports.EnsureFilesExist = (orders, jsonDB) => {
-  let allFilesExist = true
+  let allFilesExist = true;
   let fileIdDictionary = {};
 
   createFileIdDictionary(jsonDB.Orders, fileIdDictionary);
 
-  orders.forEach(order => {
+  orders.forEach((order) => {
     if (!fileIdDictionary.hasOwnProperty(order)) {
       allFilesExist = false;
     }
-  })
+  });
   return allFilesExist;
-}
+};
 //we create a dictionary with the fileIds for quick searching
 const createFileIdDictionary = (orders, fileIdDictionary) =>
   orders.forEach((order) => {

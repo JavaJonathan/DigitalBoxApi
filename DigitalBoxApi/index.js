@@ -20,6 +20,15 @@ app.use(cors(corsOptions));
 app.use(bodyParser.text({ limit: "500mb" }));
 app.use(bodyParser.raw({ limit: "500mb" }));
 
+/*Json DB Shape
+  {
+    Updating: Boolean
+    Orders: Array
+    Removed Orders: Array
+    UpdateFinishTime: Date
+  }
+*/
+
 app.post("/", async (req, res) => {
   FileHelper.GetOrdersFromFile(JSON.parse(req.body), res);
 });

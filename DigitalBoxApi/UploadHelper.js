@@ -5,33 +5,33 @@ const FileHelper = require("./FileHelper");
 const LogHelper = require("./LogHelper");
 
 exports.UpdateJsonFile = async (drive) => {
-  try {
-    var fileMetadata = {
-      name: "orders.json",
-    };
-    var media = {
-      mimeType: "text/plain",
-      body: fs.createReadStream("orders.json"),
-    };
-    return new Promise((resolve, reject) => { 
-      drive.files.update(
-      {
-        fileId: `${FileHelper.JsonFileId}`,
-        resource: fileMetadata,
-        media: media,
-        fields: "id",
-      },
-      function (err, file) {
-        if (err) {
-          // Handle error
-          reject(err);
-        } else {
-          resolve(console.log("File Id: ", file.data.id));
+  var fileMetadata = {
+    name: "orders.json",
+  };
+  var media = {
+    mimeType: "text/plain",
+    body: fs.createReadStream("orders.json"),
+  };
+  return new Promise((resolve, reject) => {
+    drive.files
+      .update(
+        {
+          fileId: `${FileHelper.JsonFileId}`,
+          resource: fileMetadata,
+          media: media,
+          fields: "id",
+        },
+        function (err, file) {
+          if (err) {
+            // Handle error
+            reject(err);
+          } else {
+            resolve(console.log("File Id: ", file.data.id));
+          }
         }
-      }
-    );
+      )
   })
- } catch (e) {
-    LogHelper.LogError(e);
-  }
+  .catch((error) => {
+    throw error;
+  });
 };

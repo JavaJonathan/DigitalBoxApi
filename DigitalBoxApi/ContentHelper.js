@@ -29,12 +29,12 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
         res.data
           .on("end", () => {
             resolve(() => {
-              console.log("Done downloading file.")
-              res.data.end()
+              console.log("Done downloading file.");
+              res.data.end();
             });
           })
           .on("error", (err) => {
-            reject(console.error("Error downloading file."))
+            reject(console.error("Error downloading file."));
           })
           .on("data", (d) => {
             progress += d.length;
@@ -46,6 +46,9 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
           })
           .pipe(dest);
       })
+      .catch((error) => {
+        reject(error);
+      });
   });
 };
 
@@ -82,61 +85,59 @@ exports.GetText = async (fileId) => {
   let pdfItem = getNewPDFItem();
 
   return new Promise((resolve, reject) => {
-    new PdfReader().parseFileItems(
-      "photo.pdf",
-      (err, item) => {
-        if (err) console.error("error:", err);
-        else if (!item) {
-          resolve({
-            FileId: fileId,
-            FileContents: itemArray,
-            Checked: false,
-          });
-        } else if (item.text) {
-          //we need this here because each item after the first item starts with the title
-          if (startTitleOnNextIteration) {
-            startTitleOnNextIteration = false;
-            startTitle = true;
-          }
-          //start title
-          else if (previousItem && previousItem.text === "Qty")
-            startTitle = true;
-          else if (IsShipDate(previousItem)) {
-            //start ship date
-            pdfItem.ShipDate = item.text;
-          }
-          //end title
-          else if (foundPriceContent(item)) startTitle = false;
-          //get quantity end current item and start a new one incase there are more orders
-          else if (foundPriceContent(previousItem)) {
-            pdfItem.Quantity = item.text;
-            itemArray.push(pdfItem);
-            orderNumber = pdfItem.OrderNumber;
-            shipDate = pdfItem.ShipDate;
-            pdfItem = getNewPDFItem();
-            pdfItem.OrderNumber = orderNumber;
-            pdfItem.ShipDate = shipDate;
-            startTitleOnNextIteration = true;
-          }
-          //start of the order number
-          else if (isOrderNumber(previousItem)) startOrderNumber = true;
-          //stop order number
-          else if (IsShipDate(item)) startOrderNumber = false;
-
-          if (startTitle) {
-            //these are dashes that cannot render, they need to be replaced
-            if (IsCharADash(item)) pdfItem.Title += "-";
-            //new pages cause issues with the algo, so this is if we encounter a new page and find these value we do nothing
-            else if (shouldIgnore(item)) {
-            } else pdfItem.Title += item.text;
-          } else if (startOrderNumber) {
-            //these are dashes that cannot render, they need to be replaced
-            if (IsCharADash(item)) pdfItem.OrderNumber += "-";
-            else pdfItem.OrderNumber += item.text;
-          }
-          previousItem = item;
+    new PdfReader().parseFileItems("photo.pdf", (err, item) => {
+      console.log(item)
+      if (err) console.error("error:", err);
+      else if (!item) {
+        resolve({
+          FileId: fileId,
+          FileContents: itemArray,
+          Checked: false,
+        });
+      } else if (item.text) {
+        console.log(item.text)
+        //we need this here because each item after the first item starts with the title
+        if (startTitleOnNextIteration) {
+          startTitleOnNextIteration = false;
+          startTitle = true;
         }
+        //start title
+        else if (previousItem && previousItem.text === "Qty") startTitle = true;
+        else if (IsShipDate(previousItem)) {
+          //start ship date
+          pdfItem.ShipDate = item.text;
+        }
+        //end title
+        else if (foundPriceContent(item)) startTitle = false;
+        //get quantity end current item and start a new one incase there are more orders
+        else if (foundPriceContent(previousItem)) {
+          pdfItem.Quantity = item.text;
+          itemArray.push(pdfItem);
+          orderNumber = pdfItem.OrderNumber;
+          shipDate = pdfItem.ShipDate;
+          pdfItem = getNewPDFItem();
+          pdfItem.OrderNumber = orderNumber;
+          pdfItem.ShipDate = shipDate;
+          startTitleOnNextIteration = true;
+        }
+        //start of the order number
+        else if (isOrderNumber(previousItem)) startOrderNumber = true;
+        //stop order number
+        else if (IsShipDate(item)) startOrderNumber = false;
+
+        if (startTitle) {
+          //these are dashes that cannot render, they need to be replaced
+          if (IsCharADash(item)) pdfItem.Title += "-";
+          //new pages cause issues with the algo, so this is if we encounter a new page and find these value we do nothing
+          else if (shouldIgnore(item)) {
+          } else pdfItem.Title += item.text;
+        } else if (startOrderNumber) {
+          //these are dashes that cannot render, they need to be replaced
+          if (IsCharADash(item)) pdfItem.OrderNumber += "-";
+          else pdfItem.OrderNumber += item.text;
+        }
+        previousItem = item;
       }
-    );
+    });
   });
 };

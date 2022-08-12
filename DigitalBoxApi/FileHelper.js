@@ -7,8 +7,6 @@ const CompareHelper = require("./CompareHelper");
 const ContentHelper = require("./ContentHelper");
 const UploadHelper = require("./UploadHelper");
 const MoveFileHelper = require("./MoveFileHelper");
-const { json } = require("body-parser");
-const { off } = require("process");
 
 exports.JsonFileId = "1tboD-ZunulU7AiPksoFSXHWIEljey11I";
 
@@ -24,33 +22,33 @@ exports.GetOrdersFromFile = async (request, response) => {
     drive = AuthorizationHelper.authorizeWithGoogle(request.token);
     await getPdfFiles(drive, fileIds);
     jsonDB = await getJSONFile(drive);
-  } catch (e) {
-    respondToClientWithError(response);
-    LogHelper.LogError(e);
+
+    if (jsonDB.Updating === true) {
+      message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
+    } else {
+      let files = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
+      newFiles = files[0];
+      removedFiles = files[1];
+    }
+
+    if (removedFiles.length > 0 || newFiles.length > 0) {
+      jsonDB = removeFilesFromDB(jsonDB, removedFiles);
+
+      if (newFiles.length > 0) {
+        jsonDB.Updating = true;
+        jsonDB.UpdateFinishTime = getUpdateFinishTime(newFiles.length);
+        message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
+      }
+      await writeToJsonFile(jsonDB, drive);
+      updateDBWithNewItems(newFiles, jsonDB, drive);
+    }
+
+    respondToClient(response, jsonDB, request, message);
+  } catch (error) {
+    respondToClientWithError(response, error);
+    LogHelper.LogError(error);
     return;
   }
-
-  if (jsonDB.Updating === true) {
-    message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
-  } else {
-    let files = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
-    newFiles = files[0];
-    removedFiles = files[1];
-  }
-
-  if (removedFiles.length > 0 || newFiles.length > 0) {
-    jsonDB = checkForRemovedFiles(jsonDB, removedFiles);
-
-    if (newFiles.length > 0) {
-      jsonDB.Updating = true;
-      jsonDB.UpdateFinishTime = getUpdateFinishTime(newFiles.length);
-      message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
-    }
-    await writeToJsonFile(jsonDB, drive);
-    updateDBWithNewItems(newFiles, jsonDB, drive);
-  }
-
-  respondToClient(response, jsonDB, request, message);
 };
 
 exports.CancelOrShipOrders = async (request, response) => {
@@ -63,11 +61,11 @@ exports.CancelOrShipOrders = async (request, response) => {
     jsonDB = await getJSONFile(drive);
 
     //we need to ensure the files hasn't already been moved causing further issues
-    let allFilesExist = CompareHelper.EnsureFilesExist(request.Orders, jsonDB)
+    let allFilesExist = CompareHelper.EnsureFilesExist(request.Orders, jsonDB);
 
-    if(!allFilesExist) {
+    if (!allFilesExist) {
       response.json({
-        Message: `Some of your orders have already been shipped or cancelled. Please try again.`,
+        Message: `Some of your orders have already been shipped or cancelled.`,
         Orders: jsonDB.Orders.sort((a, b) => {
           return (
             Date.parse(a.FileContents[0].ShipDate) -
@@ -79,44 +77,80 @@ exports.CancelOrShipOrders = async (request, response) => {
       return;
     }
 
-    newDBState = UpdateJsonDb(jsonDB, request.Orders, drive);
+    newDBState = removeOrdersFromDB(jsonDB, request.Orders, drive);
     MoveFileHelper.MoveFiles(drive, request.Orders, request.Action);
-  } catch (e) {
-    console.log(e)
-    LogHelper.LogError(e);
-    respondToClientWithError(response);
-    return;
-  }
 
-  if (request.Action === "ship") {
-    await downloadShippedFiles(drive, request.Orders);
-    response.json({
-      Message: `${request.Orders.length} order(s) shipped successfully`,
-      Orders: newDBState.Orders.sort((a, b) => {
-        return (
-          Date.parse(a.FileContents[0].ShipDate) -
-          Date.parse(b.FileContents[0].ShipDate)
-        );
-      }),
-    });
-  } else if (request.Action === "cancel") {
-    response.json({
-      Message: `${request.Orders.length} order(s) cancelled successfully`,
-      Orders: newDBState.Orders.sort((a, b) => {
-        return (
-          Date.parse(a.FileContents[0].ShipDate) -
-          Date.parse(b.FileContents[0].ShipDate)
-        );
-      }),
-    });
+    if (request.Action === "ship") {
+      await downloadShippedFiles(drive, request.Orders);
+      respondToClient(
+        response,
+        newDBState,
+        request,
+        `${request.Orders.length} order(s) shipped successfully`
+      );
+      // response.json({
+      //   Message: `${request.Orders.length} order(s) shipped successfully`,
+      //   Orders: newDBState.Orders.sort((a, b) => {
+      //     return (
+      //       Date.parse(a.FileContents[0].ShipDate) -
+      //       Date.parse(b.FileContents[0].ShipDate)
+      //     );
+      //   }),
+      // });
+    } else if (request.Action === "cancel") {
+      respondToClient(
+        response,
+        newDBState,
+        request,
+        `${request.Orders.length} order(s) cancelled successfully`
+      );
+      // response.json({
+      //   Message: `${request.Orders.length} order(s) cancelled successfully`,
+      //   Orders: newDBState.Orders.sort((a, b) => {
+      //     return (
+      //       Date.parse(a.FileContents[0].ShipDate) -
+      //       Date.parse(b.FileContents[0].ShipDate)
+      //     );
+      //   }),
+      // });
+    }
+  } catch (error) {
+    LogHelper.LogError(e);
+    respondToClientWithError(response, error);
+    return;
   }
 };
 
-const respondToClientWithError = (response) => {
-  response.json({
-    Orders: [],
-    Message: "Sorry, we encountered an error. Please try again.",
-  });
+const respondToClientWithError = (response, error) => {
+  if (error.response) {
+    console.log(error)
+    let errorCode = error.response.status;
+
+    if (errorCode === 401) {
+      response.json({
+        Orders: [],
+        Message: "You have been logged out, please log in again and retry.",
+      });
+    }
+
+    if (errorCode === 403) {
+      response.json({
+        Orders: [],
+        Message: "You have been rate limited, please wait a moment then retry.",
+      });
+    }
+  } else if (`${error}` === "Error: No access, refresh token or API key is set.") {
+    response.json({
+      Orders: [],
+      Message: "You have been logged out, please log in again and retry.",
+    });
+  } else {
+    console.log(`Error Code: ${error}`);
+    response.json({
+      Orders: [],
+      Message: "Sorry, we encountered an error. Please try again.",
+    });
+  }
 };
 
 const respondToClient = (response, jsonDB, request, message) => {
@@ -134,7 +168,7 @@ const respondToClient = (response, jsonDB, request, message) => {
   });
 };
 
-const checkForRemovedFiles = (jsonDB, removedFiles) => {
+const removeFilesFromDB = (jsonDB, removedFiles) => {
   if (removedFiles.length > 0) {
     removedFiles.forEach((removedFile) => {
       jsonDB.Orders = jsonDB.Orders.filter((order) => {
@@ -152,10 +186,8 @@ const updateDBWithNewItems = async (newFiles, jsonDB, drive) => {
   try {
     for (let counter = 0; counter < newFiles.length; counter++) {
       let PDFObject = {};
-      try {
-        await ContentHelper.DownloadFile(drive, newFiles[counter], "photo.pdf");
-      }
-      catch(e) { console.log(e); continue; }
+
+      await ContentHelper.DownloadFile(drive, newFiles[counter], "photo.pdf");
       PDFObject = await ContentHelper.GetText(newFiles[counter]);
       newOrders.push(PDFObject);
     }
@@ -163,7 +195,7 @@ const updateDBWithNewItems = async (newFiles, jsonDB, drive) => {
     jsonDB.Updating = false;
     await writeToJsonFile(jsonDB, drive);
     LogHelper.LogError(e);
-    console.log(e)
+    console.log(e);
   }
 
   if (newOrders.length > 0) {
@@ -196,10 +228,13 @@ const getJSONFile = (drive) => {
     .get({ fileId: `${exports.JsonFileId}`, alt: "media" })
     .then((response) => {
       return response.data;
+    })
+    .catch((error) => {
+      throw error;
     });
 };
 
-const UpdateJsonDb = (currentDBState, orders, drive) => {
+const removeOrdersFromDB = (currentDBState, orders, drive) => {
   let newOrders = currentDBState.Orders.filter((record) => {
     return !orders.includes(record.FileId);
   });
@@ -216,7 +251,7 @@ const writeToJsonFile = async (jsonString, drive) => {
 
 const filterOrders = (request, items) => {
   console.log(request.Filter);
-  if (request.Filter === "") return items;
+  if (!request.Filter || request.Filter === "") return items;
 
   return items.filter((item) => {
     return shouldBeFiltered(item, request);
@@ -244,7 +279,7 @@ const getPdfFiles = async (drive, fileIds) => {
   let pageToken = null;
   let fetch = true;
 
-  return new Promise(async (resolve) => {
+  return new Promise(async (resolve, reject) => {
     while (fetch) {
       await drive.files
         .list({
@@ -264,6 +299,11 @@ const getPdfFiles = async (drive, fileIds) => {
             fetch = false;
             resolve("Completed");
           }
+        })
+        .catch((error) => {
+          console.log(error);
+          fetch = false;
+          reject(error);
         });
     }
   });
