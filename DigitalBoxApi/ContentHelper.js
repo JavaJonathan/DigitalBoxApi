@@ -86,15 +86,16 @@ exports.GetText = async (fileId) => {
 
   return new Promise((resolve, reject) => {
     new PdfReader().parseFileItems("photo.pdf", (err, item) => {
-      if (err) reject(console.error("error:", err))
+      if (err) reject(console.error("error:", err));
       else if (!item) {
-        if(itemArray.length === 0) {
+        if (itemArray.length === 0) {
           itemArray.push({
-            Title: 'Unable to read PDF. Please ship item, then reupload a clearer version.',
-            OrderNumber: 'N/A',
-            Quantity: '0',
-            ShipDate: '1/1/0001'
-          })
+            Title:
+              "Unable to read PDF. Please ship item, then reupload a clearer version.",
+            OrderNumber: "N/A",
+            Quantity: "0",
+            ShipDate: "1/1/0001",
+          });
         }
 
         resolve({
@@ -103,7 +104,7 @@ exports.GetText = async (fileId) => {
           Checked: false,
         });
       } else if (item.text) {
-        console.log(item.text)
+        console.log(item.text);
         //we need this here because each item after the first item starts with the title
         if (startTitleOnNextIteration) {
           startTitleOnNextIteration = false;

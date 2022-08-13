@@ -12,19 +12,18 @@ exports.MoveFiles = async (drive, orders, action) => {
   else if (action === "ship") folderId = shippedFolderId;
 
   for (let index = 0; index < orders.length; index++) {
-    await drive.files
-      .update(
-        {
-          fileId: orders[index],
-          addParents: folderId,
-          removeParents: "1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU",
-          fields: "id, parents",
-        },
-        function (err, file) {
-          if (err) {
-            throw err;
-          }
+    await drive.files.update(
+      {
+        fileId: orders[index],
+        addParents: folderId,
+        removeParents: "1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU",
+        fields: "id, parents",
+      },
+      function (err, file) {
+        if (err) {
+          throw err;
         }
-      )
+      }
+    );
   }
 };

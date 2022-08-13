@@ -7,6 +7,7 @@ const CompareHelper = require("./CompareHelper");
 const ContentHelper = require("./ContentHelper");
 const UploadHelper = require("./UploadHelper");
 const MoveFileHelper = require("./MoveFileHelper");
+const BackupHelper = require("./BackupHelper");
 
 exports.JsonFileId = "1tboD-ZunulU7AiPksoFSXHWIEljey11I";
 
@@ -45,12 +46,13 @@ exports.GetOrdersFromFile = async (request, response) => {
       updateDBWithNewItems(newFiles, jsonDB, googleDrive);
     }
 
+    BackupHelper.BackupDatabase(googleDrive);
     respondToClient(response, jsonDB, request, message);
   } catch (error) {
     respondToClientWithError(response, error);
     LogHelper.LogError(error);
 
-    if(currentUserTriggeredDBUpdate) markDBAsNotBeingUpdated(googleDrive)
+    if (currentUserTriggeredDBUpdate) markDBAsNotBeingUpdated(googleDrive);
 
     return;
   }
@@ -82,7 +84,12 @@ exports.CancelOrShipOrders = async (request, response) => {
       return;
     }
 
-    newDBState = removeOrdersFromDB(jsonDB, request.Orders, googleDrive, request.Action);
+    newDBState = removeOrdersFromDB(
+      jsonDB,
+      request.Orders,
+      googleDrive,
+      request.Action
+    );
     MoveFileHelper.MoveFiles(googleDrive, request.Orders, request.Action);
 
     if (request.Action === "ship") {
@@ -109,31 +116,39 @@ exports.CancelOrShipOrders = async (request, response) => {
 };
 
 const respondToClientWithError = (response, error) => {
-  console.log(error)
+  console.log('hit here')
+  console.log(error);
 
   if (error.response) {
-    let errorCode = error.response.status;
+    let errorCode = error.response.status
+    let errorText = error.response.statusText;
 
     if (errorCode === 401) {
       response.json({
         Orders: [],
         Message: "You have been logged out, please log in again and retry.",
       });
-    }
-    else if (errorCode === 403) {
+    } else if (errorText === 'Forbidden' && errorCode === 403) {
+      response.json({
+        Orders: [],
+        Message: "You have been logged out, please log in again and retry.",
+      });
+    } else if (errorCode === 403) {
       response.json({
         Orders: [],
         Message: "You have been rate limited, please wait a moment then retry.",
       });
     }
-    else {
+     else {
       console.log(`Error Code: ${error.response}`);
       response.json({
         Orders: [],
         Message: "Sorry, we encountered an error. Please try again.",
-      })
+      });
     }
-  } else if (`${error}` === "Error: No access, refresh token or API key is set.") {
+  } else if (
+    `${error}` === "Error: No access, refresh token or API key is set."
+  ) {
     response.json({
       Orders: [],
       Message: "You have been logged out, please log in again and retry.",
@@ -151,7 +166,7 @@ const markDBAsNotBeingUpdated = async (googleDrive) => {
   let jsonDB = await getJSONFile(googleDrive);
   jsonDB.Updating = false;
   await writeToJsonFile(jsonDB, googleDrive);
-}
+};
 
 const respondToClient = (response, jsonDB, request, message) => {
   response.json({
@@ -187,7 +202,11 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive) => {
     for (let counter = 0; counter < newFiles.length; counter++) {
       let PDFObject = {};
 
-      await ContentHelper.DownloadFile(googleDrive, newFiles[counter], "photo.pdf");
+      await ContentHelper.DownloadFile(
+        googleDrive,
+        newFiles[counter],
+        "photo.pdf"
+      );
       PDFObject = await ContentHelper.GetText(newFiles[counter]);
       newOrders.push(PDFObject);
     }
@@ -239,8 +258,8 @@ const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {
     return !orders.includes(record.FileId);
   });
 
-  if(action === "cancel") {
-    updateCancelledOrders(currentDBState, orders)
+  if (action === "cancel") {
+    updateCancelledOrders(currentDBState, orders);
   }
 
   currentDBState.Orders = newOrders;
@@ -249,31 +268,32 @@ const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {
 };
 
 const updateCancelledOrders = (currentDBState, orders) => {
-  if(!currentDBState.CancelledOrders) {
-    currentDBState.CancelledOrders = orders.map(order => {
+  if (!currentDBState.CancelledOrders) {
+    currentDBState.CancelledOrders = orders.map((order) => {
       return {
         LinkToFile: `https://drive.google.com/file/d/${order}`,
-        CancelledOn: new Date().toLocaleString()
-      }
-    })
-  }
-  else {
-    currentDBState.CancelledOrders.push(...orders.map(order => {
-      return {
-        LinkToFile: `https://drive.google.com/file/d/${order}`,
-        CancelledOn: new Date().toLocaleString()
-      }
-    }))
+        CancelledOn: new Date().toLocaleString(),
+      };
+    });
+  } else {
+    currentDBState.CancelledOrders.push(
+      ...orders.map((order) => {
+        return {
+          LinkToFile: `https://drive.google.com/file/d/${order}`,
+          CancelledOn: new Date().toLocaleString(),
+        };
+      })
+    );
   }
 
-  if(currentDBState.CancelledOrders.length > 100) {
-    currentDBState.CancelledOrders = currentDBState.CancelledOrders.sort((a, b) => {
-      return (
-        Date.parse(b.CancelledOn) - Date.parse(a.CancelledOn)
-      );
-    }).slice(0, 99)
+  if (currentDBState.CancelledOrders.length > 100) {
+    currentDBState.CancelledOrders = currentDBState.CancelledOrders.sort(
+      (a, b) => {
+        return Date.parse(b.CancelledOn) - Date.parse(a.CancelledOn);
+      }
+    ).slice(0, 99);
   }
-}
+};
 
 const writeToJsonFile = async (jsonString, googleDrive) => {
   fs.writeFileSync("orders.json", JSON.stringify(jsonString));
