@@ -86,9 +86,17 @@ exports.GetText = async (fileId) => {
 
   return new Promise((resolve, reject) => {
     new PdfReader().parseFileItems("photo.pdf", (err, item) => {
-      console.log(item)
-      if (err) console.error("error:", err);
+      if (err) reject(console.error("error:", err))
       else if (!item) {
+        if(itemArray.length === 0) {
+          itemArray.push({
+            Title: 'Unable to read PDF. Please ship item, then reupload a clearer version.',
+            OrderNumber: 'N/A',
+            Quantity: '0',
+            ShipDate: '1/1/0001'
+          })
+        }
+
         resolve({
           FileId: fileId,
           FileContents: itemArray,

@@ -26,10 +26,5 @@ exports.MoveFiles = async (drive, orders, action) => {
           }
         }
       )
-      .catch((error) => {
-        // here we will need to handle any failures
-        //we can save a list of file ids in the db that were supposed to be deleted from the db so the app knows to still filter out those files
-        throw error;
-      });
   }
 };

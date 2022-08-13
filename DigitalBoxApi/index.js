@@ -22,10 +22,11 @@ app.use(bodyParser.raw({ limit: "500mb" }));
 
 /*Json DB Shape
   {
-    Updating: Boolean
-    Orders: Array
-    Removed Orders: Array
-    UpdateFinishTime: Date
+    Updating: Boolean,
+    Orders: Array,
+    Removed Orders: Array,
+    UpdateFinishTime: Date,
+    RemovedOrders: Array
   }
 */
 
