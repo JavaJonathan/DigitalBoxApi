@@ -2,43 +2,59 @@ const { google } = require("googleapis");
 const fs = require("fs");
 
 exports.BackupDatabase = async (googleDrive) => {
+  let fileIds = [];
+
   try {
     await uploadDatabaseBackup(googleDrive);
+    fileIds = await getDatabaseBackups(googleDrive, fileIds)
+
+    console.log(fileIds)
+
+    if(fileIds.length > 100) await trimDatabaseBackups(fileIds[100], googleDrive)
   } catch (err) {
     console.log(err);
   }
 };
 
 const getDatabaseBackups = async (googleDrive, fileIds) => {
-  let pageToken = null;
 
   return new Promise(async (resolve, reject) => {
     await googleDrive.files
       .list({
         q: "'1KTz0I8r3YxuvHS78vUcqBlKPKUdOBLQn' in parents and trashed=false",
-        fields: "nextPageToken, files(id, name)",
+        fields: "nextPageToken, files(id)",
         spaces: "drive",
-        pageToken: pageToken,
         pageSize: 1000,
         orderBy: "createdTime desc",
       })
       .then((response) => {
-        response.data.files.forEach(function (file) {});
+        fileIds = [...response.data.files];
+        resolve(fileIds)
       })
       .catch((error) => {
         console.log(error);
         fetch = false;
         reject(error);
       });
+  }); 
+};
+
+const trimDatabaseBackups = (fileIdParam, googleDrive) => {
+  return new Promise(async (resolve, reject) => {
+    await googleDrive.files.delete({
+      fileId: fileIdParam.id
+    })  
+    .then((response) => {resolve(console.log('DB Backups Trimmed'))})
+    .catch((error) => {
+      console.log(error);
+      reject(error);
+    });
   });
 };
 
-const trimDatabaseBackups = () => {};
-
 const uploadDatabaseBackup = async (googleDrive) => {
-
   const fileMetadata = {
-    title: 'BackUp.json',
+    name: `${new Date().toLocaleString()}-BackUp.json`,
     parents: ["1KTz0I8r3YxuvHS78vUcqBlKPKUdOBLQn"]
   };
 
@@ -53,7 +69,7 @@ const uploadDatabaseBackup = async (googleDrive) => {
     media: media,
     fields: "id",
   })  
-  .then((response) => {resolve('cool')})
+  .then((response) => {resolve(console.log('DB Backup Uploaded'))})
   .catch((error) => {
     console.log(error);
     reject(error);
