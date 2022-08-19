@@ -46,7 +46,6 @@ exports.GetOrdersFromFile = async (request, response) => {
       updateDBWithNewItems(newFiles, jsonDB, googleDrive);
     }
 
-    BackupHelper.BackupDatabase(googleDrive);
     respondToClient(response, jsonDB, request, message);
   } catch (error) {
     respondToClientWithError(response, error);
@@ -101,6 +100,7 @@ exports.CancelOrShipOrders = async (request, response) => {
         `${request.Orders.length} order(s) shipped successfully`
       );
     } else if (request.Action === "cancel") {
+      BackupHelper.BackupDatabase(googleDrive);
       respondToClient(
         response,
         newDBState,
@@ -116,11 +116,11 @@ exports.CancelOrShipOrders = async (request, response) => {
 };
 
 const respondToClientWithError = (response, error) => {
-  console.log('hit here')
+  console.log("hit here");
   console.log(error);
 
   if (error.response) {
-    let errorCode = error.response.status
+    let errorCode = error.response.status;
     let errorText = error.response.statusText;
 
     if (errorCode === 401) {
@@ -128,7 +128,7 @@ const respondToClientWithError = (response, error) => {
         Orders: [],
         Message: "You have been logged out, please log in again and retry.",
       });
-    } else if (errorText === 'Forbidden' && errorCode === 403) {
+    } else if (errorText === "Forbidden" && errorCode === 403) {
       response.json({
         Orders: [],
         Message: "You have been logged out, please log in again and retry.",
@@ -138,8 +138,7 @@ const respondToClientWithError = (response, error) => {
         Orders: [],
         Message: "You have been rate limited, please wait a moment then retry.",
       });
-    }
-     else {
+    } else {
       console.log(`Error Code: ${error.response}`);
       response.json({
         Orders: [],
