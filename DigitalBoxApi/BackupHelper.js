@@ -8,8 +8,6 @@ exports.BackupDatabase = async (googleDrive) => {
     await uploadDatabaseBackup(googleDrive);
     fileIds = await getDatabaseBackups(googleDrive, fileIds);
 
-    console.log(fileIds);
-
     if (fileIds.length > 100)
       await trimDatabaseBackups(fileIds[100], googleDrive);
   } catch (err) {

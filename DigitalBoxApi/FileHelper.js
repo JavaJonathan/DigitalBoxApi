@@ -116,7 +116,6 @@ exports.CancelOrShipOrders = async (request, response) => {
 };
 
 const respondToClientWithError = (response, error) => {
-  console.log("hit here");
   console.log(error);
 
   if (error.response) {
@@ -209,25 +208,24 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive) => {
       PDFObject = await ContentHelper.GetText(newFiles[counter]);
       newOrders.push(PDFObject);
     }
+
+    if (newOrders.length > 0) {
+      jsonDB = await getJSONFile(googleDrive);
+      jsonDB.Orders.push(...newOrders);
+      jsonDB.Updating = false;
+      await writeToJsonFile(jsonDB, googleDrive);
+    }
   } catch (e) {
     jsonDB.Updating = false;
     await writeToJsonFile(jsonDB, googleDrive);
     LogHelper.LogError(e);
     console.log(e);
   }
-
-  if (newOrders.length > 0) {
-    jsonDB = await getJSONFile(googleDrive);
-    jsonDB.Orders.push(...newOrders);
-    jsonDB.Updating = false;
-    await writeToJsonFile(jsonDB, googleDrive);
-  }
 };
 
 const getUpdateFinishTime = (numberOfItems) => {
   let date = new Date();
   date.setMinutes(date.getMinutes() + Math.ceil(numberOfItems / 90));
-  console.log(date.toLocaleString());
   return date.toLocaleString();
 };
 
@@ -300,7 +298,6 @@ const writeToJsonFile = async (jsonString, googleDrive) => {
 };
 
 const filterOrders = (request, items) => {
-  console.log(request.Filter);
   if (!request.Filter || request.Filter === "") return items;
 
   return items.filter((item) => {

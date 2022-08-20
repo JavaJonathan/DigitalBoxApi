@@ -55,5 +55,5 @@ app.get("/", (req, res) => {
 // });
 
 app.listen(2020, () => {
-  console.log("server is listening on port 2020");
+  console.log("Server is up and listening on port 2020");
 });

@@ -3,7 +3,7 @@ const fs = require("fs");
 exports.LogError = (error) => {
   let errorLogArray = [];
   let errorObject = {
-    Error: error.stack,
+    Error: error,
     Time: new Date().toLocaleString(),
   };
 

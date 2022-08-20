@@ -25,7 +25,7 @@ exports.UpdateJsonFile = async (drive) => {
           // Handle error
           reject(err);
         } else {
-          resolve(console.log("File Id: ", file.data.id));
+          resolve(console.log("Json File Updated."));
         }
       }
     );

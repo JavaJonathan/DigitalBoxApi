@@ -104,7 +104,6 @@ exports.GetText = async (fileId) => {
           Checked: false,
         });
       } else if (item.text) {
-        console.log(item.text);
         //we need this here because each item after the first item starts with the title
         if (startTitleOnNextIteration) {
           startTitleOnNextIteration = false;
