@@ -258,6 +258,9 @@ const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {
   if (action === "cancel") {
     updateCancelledOrders(currentDBState, orders);
   }
+  else if (action === "ship") {
+    updateShippedOrders(currentDBState, orders);
+  }
 
   currentDBState.Orders = newOrders;
   writeToJsonFile(currentDBState, googleDrive);
@@ -291,6 +294,35 @@ const updateCancelledOrders = (currentDBState, orders) => {
     ).slice(0, 99);
   }
 };
+
+const updateShippedOrders = (currentDBState, orders) => {
+  if (!currentDBState.ShippedOrders) {
+    currentDBState.ShippedOrders = orders.map((order) => {
+      return {
+        LinkToFile: `https://drive.google.com/file/d/${order}`,
+        ShippedOn: new Date().toLocaleString(),
+      };
+    });
+  } else {
+    currentDBState.ShippedOrders.push(
+      ...orders.map((order) => {
+        return {
+          LinkToFile: `https://drive.google.com/file/d/${order}`,
+          ShippedOn: new Date().toLocaleString(),
+        };
+      })
+    );
+  }
+
+  if (currentDBState.ShippedOrders.length > 100) {
+    currentDBState.ShippedOrders = currentDBState.ShippedOrders.sort(
+      (a, b) => {
+        return Date.parse(b.ShippedOn) - Date.parse(a.ShippedOn);
+      }
+    ).slice(0, 99);
+  }
+};
+
 
 const writeToJsonFile = async (jsonString, googleDrive) => {
   fs.writeFileSync("orders.json", JSON.stringify(jsonString));
