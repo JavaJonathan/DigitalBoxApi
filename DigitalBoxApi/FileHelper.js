@@ -21,7 +21,7 @@ exports.GetOrdersFromFile = async (request, response) => {
   let currentUserTriggeredDBUpdate = false;
 
   try {
-    googleDrive = AuthorizationHelper.authorizeWithGoogle(request.token);
+    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
     await getPdfFiles(googleDrive, fileIds);
     jsonDB = await getJSONFile(googleDrive);
 
@@ -78,6 +78,7 @@ exports.CancelOrShipOrders = async (request, response) => {
             Date.parse(b.FileContents[0].ShipDate)
           );
         }),
+        Token: AuthorizationHelper.authToken
       });
 
       return;
@@ -126,22 +127,26 @@ const respondToClientWithError = (response, error) => {
       response.json({
         Orders: [],
         Message: "You have been logged out, please log in again and retry.",
+        Token: AuthorizationHelper.authToken
       });
     } else if (errorText === "Forbidden" && errorCode === 403) {
       response.json({
         Orders: [],
         Message: "You have been logged out, please log in again and retry.",
+        Token: AuthorizationHelper.authToken
       });
     } else if (errorCode === 403) {
       response.json({
         Orders: [],
         Message: "You have been rate limited, please wait a moment then retry.",
+        Token: AuthorizationHelper.authToken
       });
     } else {
       console.log(`Error Code: ${error.response}`);
       response.json({
         Orders: [],
         Message: "Sorry, we encountered an error. Please try again.",
+        Token: AuthorizationHelper.authToken
       });
     }
   } else if (
@@ -150,12 +155,14 @@ const respondToClientWithError = (response, error) => {
     response.json({
       Orders: [],
       Message: "You have been logged out, please log in again and retry.",
+      Token: AuthorizationHelper.authToken
     });
   } else {
     console.log(`Error Code: ${error}`);
     response.json({
       Orders: [],
       Message: "Sorry, we encountered an error. Please try again.",
+      Token: AuthorizationHelper.authToken
     });
   }
 };
@@ -178,6 +185,7 @@ const respondToClient = (response, jsonDB, request, message) => {
       })
     ),
     Message: message,
+    Token: AuthorizationHelper.authToken
   });
 };
 
