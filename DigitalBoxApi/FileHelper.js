@@ -28,6 +28,17 @@ exports.GetOrdersFromFile = async (request, response) => {
     if (jsonDB.Updating === true) {
       message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
     } else {
+      //there's a bug in the checkForUpdates func
+      // We are checking if there has been a file manually removed from the to be shipped folder
+      //but I think that may be conflicting with the ship functionality
+      //that moves the files, downloads them, then updates the db
+      //we can maybe solve this by implementing a isShippingFlag in the db to know whether a file is missing to due someone shipping
+      //or due to a manual removal
+      //This will also solve the issue where they are seeing the db has been updated message when nothing was updated
+      //Root Cause: in addition to the explanation above, once the db is prematurely updated, someone else searches and now the db
+      //and now the db sees there is a file missing causing the shipped message to pop up
+      //TO DO:
+      //We need a reliable way to fallback if any of our boolean value get stuck in a certain value
       let files = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
       newFiles = files[0];
       removedFiles = files[1];
@@ -61,58 +72,51 @@ exports.CancelOrShipOrders = async (request, response) => {
   let googleDrive = {};
   let jsonDB = {};
   let newDBState = {};
+  googleDrive = AuthorizationHelper.authorizeWithGoogle(request.token);
+  jsonDB = await getJSONFile(googleDrive);
 
-  try {
-    googleDrive = AuthorizationHelper.authorizeWithGoogle(request.token);
-    jsonDB = await getJSONFile(googleDrive);
+  //we need to ensure the files hasn't already been moved causing further issues
+  let allFilesExist = CompareHelper.EnsureFilesExist(request.Orders, jsonDB);
 
-    //we need to ensure the files hasn't already been moved causing further issues
-    let allFilesExist = CompareHelper.EnsureFilesExist(request.Orders, jsonDB);
+  if (!allFilesExist) {
+    response.json({
+      Message: `Some of your orders have already been shipped or cancelled.`,
+      Orders: jsonDB.Orders.sort((a, b) => {
+        return (
+          Date.parse(a.FileContents[0].ShipDate) -
+          Date.parse(b.FileContents[0].ShipDate)
+        );
+      }),
+      Token: AuthorizationHelper.authToken,
+    });
 
-    if (!allFilesExist) {
-      response.json({
-        Message: `Some of your orders have already been shipped or cancelled.`,
-        Orders: jsonDB.Orders.sort((a, b) => {
-          return (
-            Date.parse(a.FileContents[0].ShipDate) -
-            Date.parse(b.FileContents[0].ShipDate)
-          );
-        }),
-        Token: AuthorizationHelper.authToken
-      });
-
-      return;
-    }
-
-    newDBState = removeOrdersFromDB(
-      jsonDB,
-      request.Orders,
-      googleDrive,
-      request.Action
-    );
-    MoveFileHelper.MoveFiles(googleDrive, request.Orders, request.Action);
-
-    if (request.Action === "ship") {
-      await downloadShippedFiles(googleDrive, request.Orders);
-      respondToClient(
-        response,
-        newDBState,
-        request,
-        `${request.Orders.length} order(s) shipped successfully`
-      );
-    } else if (request.Action === "cancel") {
-      BackupHelper.BackupDatabase(googleDrive);
-      respondToClient(
-        response,
-        newDBState,
-        request,
-        `${request.Orders.length} order(s) cancelled successfully`
-      );
-    }
-  } catch (error) {
-    LogHelper.LogError(error);
-    respondToClientWithError(response, error);
     return;
+  }
+
+  newDBState = removeOrdersFromDB(
+    jsonDB,
+    request.Orders,
+    googleDrive,
+    request.Action
+  );
+  MoveFileHelper.MoveFiles(googleDrive, request.Orders, request.Action);
+
+  if (request.Action === "ship") {
+    await downloadShippedFiles(googleDrive, request.Orders);
+    respondToClient(
+      response,
+      newDBState,
+      request,
+      `${request.Orders.length} order(s) shipped successfully`
+    );
+  } else if (request.Action === "cancel") {
+    BackupHelper.BackupDatabase(googleDrive);
+    respondToClient(
+      response,
+      newDBState,
+      request,
+      `${request.Orders.length} order(s) cancelled successfully`
+    );
   }
 };
 
@@ -127,26 +131,26 @@ const respondToClientWithError = (response, error) => {
       response.json({
         Orders: [],
         Message: "You have been logged out, please log in again and retry.",
-        Token: AuthorizationHelper.authToken
+        Token: AuthorizationHelper.authToken,
       });
     } else if (errorText === "Forbidden" && errorCode === 403) {
       response.json({
         Orders: [],
         Message: "You have been logged out, please log in again and retry.",
-        Token: AuthorizationHelper.authToken
+        Token: AuthorizationHelper.authToken,
       });
     } else if (errorCode === 403) {
       response.json({
         Orders: [],
         Message: "You have been rate limited, please wait a moment then retry.",
-        Token: AuthorizationHelper.authToken
+        Token: AuthorizationHelper.authToken,
       });
     } else {
       console.log(`Error Code: ${error.response}`);
       response.json({
         Orders: [],
         Message: "Sorry, we encountered an error. Please try again.",
-        Token: AuthorizationHelper.authToken
+        Token: AuthorizationHelper.authToken,
       });
     }
   } else if (
@@ -155,14 +159,14 @@ const respondToClientWithError = (response, error) => {
     response.json({
       Orders: [],
       Message: "You have been logged out, please log in again and retry.",
-      Token: AuthorizationHelper.authToken
+      Token: AuthorizationHelper.authToken,
     });
   } else {
     console.log(`Error Code: ${error}`);
     response.json({
       Orders: [],
       Message: "Sorry, we encountered an error. Please try again.",
-      Token: AuthorizationHelper.authToken
+      Token: AuthorizationHelper.authToken,
     });
   }
 };
@@ -185,7 +189,7 @@ const respondToClient = (response, jsonDB, request, message) => {
       })
     ),
     Message: message,
-    Token: AuthorizationHelper.authToken
+    Token: AuthorizationHelper.authToken,
   });
 };
 
@@ -203,31 +207,23 @@ const removeFilesFromDB = (jsonDB, removedFiles) => {
 
 const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive) => {
   let newOrders = [];
+  for (let counter = 0; counter < newFiles.length; counter++) {
+    let PDFObject = {};
 
-  try {
-    for (let counter = 0; counter < newFiles.length; counter++) {
-      let PDFObject = {};
+    await ContentHelper.DownloadFile(
+      googleDrive,
+      newFiles[counter],
+      "photo.pdf"
+    );
+    PDFObject = await ContentHelper.GetText(newFiles[counter]);
+    newOrders.push(PDFObject);
+  }
 
-      await ContentHelper.DownloadFile(
-        googleDrive,
-        newFiles[counter],
-        "photo.pdf"
-      );
-      PDFObject = await ContentHelper.GetText(newFiles[counter]);
-      newOrders.push(PDFObject);
-    }
-
-    if (newOrders.length > 0) {
-      jsonDB = await getJSONFile(googleDrive);
-      jsonDB.Orders.push(...newOrders);
-      jsonDB.Updating = false;
-      await writeToJsonFile(jsonDB, googleDrive);
-    }
-  } catch (e) {
+  if (newOrders.length > 0) {
+    jsonDB = await getJSONFile(googleDrive);
+    jsonDB.Orders.push(...newOrders);
     jsonDB.Updating = false;
     await writeToJsonFile(jsonDB, googleDrive);
-    LogHelper.LogError(e);
-    console.log(e);
   }
 };
 
@@ -265,8 +261,7 @@ const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {
 
   if (action === "cancel") {
     updateCancelledOrders(currentDBState, orders);
-  }
-  else if (action === "ship") {
+  } else if (action === "ship") {
     updateShippedOrders(currentDBState, orders);
   }
 
@@ -323,14 +318,11 @@ const updateShippedOrders = (currentDBState, orders) => {
   }
 
   if (currentDBState.ShippedOrders.length > 100) {
-    currentDBState.ShippedOrders = currentDBState.ShippedOrders.sort(
-      (a, b) => {
-        return Date.parse(b.ShippedOn) - Date.parse(a.ShippedOn);
-      }
-    ).slice(0, 99);
+    currentDBState.ShippedOrders = currentDBState.ShippedOrders.sort((a, b) => {
+      return Date.parse(b.ShippedOn) - Date.parse(a.ShippedOn);
+    }).slice(0, 99);
   }
 };
-
 
 const writeToJsonFile = async (jsonString, googleDrive) => {
   fs.writeFileSync("orders.json", JSON.stringify(jsonString));

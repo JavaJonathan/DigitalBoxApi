@@ -3,7 +3,7 @@ const fs = require("fs");
 
 let credentials = {};
 
-exports.authToken = '';
+exports.authToken = "";
 
 exports.authorizeWithGoogle = async (token) => {
   const oAuth2Client = new google.auth.OAuth2(
@@ -15,8 +15,8 @@ exports.authorizeWithGoogle = async (token) => {
   oAuth2Client.apiKey = credentials.ApiKey;
 
   //refreshes token if needed
-  this.authToken = await oAuth2Client.getAccessToken()
-  oAuth2Client.credentials = {access_token: this.authToken.token}
+  this.authToken = await oAuth2Client.getAccessToken();
+  oAuth2Client.credentials = { access_token: this.authToken.token };
 
   return google.drive({ version: "v3", auth: oAuth2Client });
 };
