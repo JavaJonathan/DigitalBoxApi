@@ -9,7 +9,7 @@ const UploadHelper = require("./UploadHelper");
 const MoveFileHelper = require("./MoveFileHelper");
 const BackupHelper = require("./BackupHelper");
 
-exports.JsonFileId = "1tboD-ZunulU7AiPksoFSXHWIEljey11I";
+exports.JsonFileId = "1TEz1AMqL_aDsW4nNqtOqLAalZfaeyufN";
 
 exports.GetOrdersFromFile = async (request, response) => {
   let fileIds = [];
@@ -32,13 +32,15 @@ exports.GetOrdersFromFile = async (request, response) => {
       // We are checking if there has been a file manually removed from the to be shipped folder
       //but I think that may be conflicting with the ship functionality
       //that moves the files, downloads them, then updates the db
-      //we can maybe solve this by implementing a isShippingFlag in the db to know whether a file is missing to due someone shipping
+      //we can maybe solve this by implementing an isShippingFlag in the db to know whether a file is missing to due someone shipping
       //or due to a manual removal
       //This will also solve the issue where they are seeing the db has been updated message when nothing was updated
       //Root Cause: in addition to the explanation above, once the db is prematurely updated, someone else searches and now the db
       //and now the db sees there is a file missing causing the shipped message to pop up
       //TO DO:
       //We need a reliable way to fallback if any of our boolean value get stuck in a certain value
+      //we can also speed up search by giving them results from the client side then in the background checking if their results are out of date
+      //ship and cancel will be disabled until results are confirmed to be up to date
       let files = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
       newFiles = files[0];
       removedFiles = files[1];
@@ -363,7 +365,7 @@ const getPdfFiles = async (googleDrive, fileIds) => {
       await googleDrive.files
         .list({
           q: "'1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU' in parents and trashed=false",
-          fields: "nextPageToken, files(id, name)",
+          fields: "nextPageToken, files(id)",
           spaces: "drive",
           pageToken: pageToken,
           pageSize: 1000,
