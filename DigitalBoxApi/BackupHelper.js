@@ -1,6 +1,8 @@
 const { google } = require("googleapis");
 const fs = require("fs");
 
+const backUpFolderId = "1MePmV9XLJpl4RAu7FeH6WTpyG9kMu294";
+
 exports.BackupDatabase = async (googleDrive) => {
   let fileIds = [];
 
@@ -19,7 +21,7 @@ const getDatabaseBackups = async (googleDrive, fileIds) => {
   return new Promise(async (resolve, reject) => {
     await googleDrive.files
       .list({
-        q: "'1KTz0I8r3YxuvHS78vUcqBlKPKUdOBLQn' in parents and trashed=false",
+        q: `'${backUpFolderId}' in parents and trashed=false`,
         fields: "nextPageToken, files(id)",
         spaces: "drive",
         pageSize: 1000,
@@ -56,7 +58,7 @@ const trimDatabaseBackups = (fileIdParam, googleDrive) => {
 const uploadDatabaseBackup = async (googleDrive) => {
   const fileMetadata = {
     name: `${new Date().toLocaleString()}-BackUp.json`,
-    parents: ["1KTz0I8r3YxuvHS78vUcqBlKPKUdOBLQn"],
+    parents: ["1MePmV9XLJpl4RAu7FeH6WTpyG9kMu294"],
   };
 
   var media = {

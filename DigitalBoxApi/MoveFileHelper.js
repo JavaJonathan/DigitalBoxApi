@@ -3,8 +3,9 @@ const AuthorizationHelper = require("./AuthorizationHelper");
 const fs = require("fs");
 const LogHelper = require("./LogHelper");
 
-let cancelledFolderId = "1S1LXbXcv1pMvB7HvNJ0jeLDsthGduajw";
-let shippedFolderId = "1iQF0GfFcsbQLEA30FL3fw0Vs-K0LxbiV";
+const cancelledFolderId = "1_6WgFBHipB7gn3jpn3SSwfIWljT89y_L";
+const shippedFolderId = "1Q-XbH5ec5rVE7yiz_z9kelJMtsAuhYyh";
+const toBeShippedFolder = "1_-sgosO7Pyq5b5ofxrD7z1Bb5uck8q8Z";
 let folderId = "";
 
 exports.MoveFiles = async (drive, orders, action) => {
@@ -16,14 +17,14 @@ exports.MoveFiles = async (drive, orders, action) => {
       {
         fileId: orders[index],
         addParents: folderId,
-        removeParents: "1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU",
+        removeParents: toBeShippedFolder,
         fields: "id, parents",
       },
       function (err, file) {
         if (err) {
           throw err;
         }
-      }
+      },
     );
   }
 };

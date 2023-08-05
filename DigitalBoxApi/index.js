@@ -8,6 +8,7 @@ const fs = require("fs");
 const { Console } = require("console");
 const AuthorizationHelper = require("./AuthorizationHelper");
 const FileHelper = require("./FileHelper");
+const SearchHelper = require("./SearchHelper");
 
 const app = express();
 
@@ -40,6 +41,10 @@ app.post("/cancel", async (req, res) => {
 
 app.post("/ship", async (req, res) => {
   FileHelper.CancelOrShipOrders(JSON.parse(req.body), res);
+});
+
+app.post("/search", async (req, res) => {
+  SearchHelper.SearchOrders(JSON.parse(req.body), res);
 });
 
 app.get("/", (req, res) => {
