@@ -17,6 +17,7 @@
     "googleapis": "^39.2.0",
     "pdf.js": "^0.1.0",
     "pdfjs-dist": "^2.13.216",
-    "pdfreader": "^1.4.0"
+    "pdfreader": "^1.4.0",
+    "prettier": "^3.0.1"
   }
 }

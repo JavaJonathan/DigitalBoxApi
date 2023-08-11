@@ -129,7 +129,7 @@ exports.CancelOrShipOrders = async (request, response) => {
   }
 };
 
-exports.getJSONFile = async (googleDrive) => {
+const getJSONFile = exports.getJSONFile = async (googleDrive) => {
   return googleDrive.files
     .get({ fileId: `${exports.JsonFileId}`, alt: "media" })
     .then((response) => {
