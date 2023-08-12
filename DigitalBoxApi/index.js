@@ -51,13 +51,13 @@ app.get("/", (req, res) => {
   res.json(AuthorizationHelper.getCredentials());
 });
 
-// app.get('/:name', (req, res) => {
-//     let name = req.params.name;
+app.get("/canceledOrders", async (req, res) => {
+  res.json(SearchHelper.CanceledOrders(req, res));
+});
 
-//     res.json({
-//         message: `Hello ${name}`
-//     });
-// });
+app.get("/shippedOrders", async (req, res) => {
+  res.json(SearchHelper.ShippedOrders(req, res));
+});
 
 app.listen(2020, () => {
   console.log("Server is up and listening on port 2020");

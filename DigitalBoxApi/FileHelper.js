@@ -201,10 +201,14 @@ const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {
     return !orders.includes(record.FileId);
   });
 
+  let removedOrders = currentDBState.Orders.filter((record) => {
+    return orders.includes(record.FileId);
+  });
+
   if (action === "cancel") {
-    updateCancelledOrders(currentDBState, orders);
+    updateCancelledOrders(currentDBState, removedOrders);
   } else if (action === "ship") {
-    updateShippedOrders(currentDBState, orders);
+    updateShippedOrders(currentDBState, removedOrders);
   }
 
   currentDBState.Orders = newOrders;
@@ -213,56 +217,30 @@ const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {
 };
 
 const updateCancelledOrders = (currentDBState, orders) => {
+  orders = orders.map(order => {
+    return  { ...order, canceledOn: new Date().toLocaleString() }
+  })
+
   if (!currentDBState.CancelledOrders) {
-    currentDBState.CancelledOrders = orders.map((order) => {
-      return {
-        LinkToFile: `https://drive.google.com/file/d/${order}`,
-        CancelledOn: new Date().toLocaleString(),
-      };
-    });
+    currentDBState.CancelledOrders = [...orders]
   } else {
     currentDBState.CancelledOrders.push(
-      ...orders.map((order) => {
-        return {
-          LinkToFile: `https://drive.google.com/file/d/${order}`,
-          CancelledOn: new Date().toLocaleString(),
-        };
-      }),
+      orders
     );
-  }
-
-  if (currentDBState.CancelledOrders.length > 100) {
-    currentDBState.CancelledOrders = currentDBState.CancelledOrders.sort(
-      (a, b) => {
-        return Date.parse(b.CancelledOn) - Date.parse(a.CancelledOn);
-      },
-    ).slice(0, 99);
   }
 };
 
 const updateShippedOrders = (currentDBState, orders) => {
+  orders = orders.map(order => {
+    return  { ...order, shippedOn: new Date().toLocaleString() }
+  })
+
   if (!currentDBState.ShippedOrders) {
-    currentDBState.ShippedOrders = orders.map((order) => {
-      return {
-        LinkToFile: `https://drive.google.com/file/d/${order}`,
-        ShippedOn: new Date().toLocaleString(),
-      };
-    });
+    currentDBState.ShippedOrders = [...orders]
   } else {
     currentDBState.ShippedOrders.push(
-      ...orders.map((order) => {
-        return {
-          LinkToFile: `https://drive.google.com/file/d/${order}`,
-          ShippedOn: new Date().toLocaleString(),
-        };
-      }),
+      ...orders
     );
-  }
-
-  if (currentDBState.ShippedOrders.length > 100) {
-    currentDBState.ShippedOrders = currentDBState.ShippedOrders.sort((a, b) => {
-      return Date.parse(b.ShippedOn) - Date.parse(a.ShippedOn);
-    }).slice(0, 99);
   }
 };
 

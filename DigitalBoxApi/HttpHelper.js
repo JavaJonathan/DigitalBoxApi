@@ -67,6 +67,22 @@ exports.respondToClient = (response, jsonDB, request, message) => {
   });
 };
 
+exports.respondWithCanceledOrShippedOrders = (response, orders, request, message) => {
+    response.json({
+      Orders: filterOrders(
+        request,
+        orders.sort((a, b) => {
+          return (
+            Date.parse(a.FileContents[0].ShipDate) -
+            Date.parse(b.FileContents[0].ShipDate)
+          );
+        }),
+      ),
+      Message: message,
+      Token: AuthorizationHelper.authToken,
+    });
+  };
+
 const filterOrders = (request, items) => {
   if (!request.Filter || request.Filter === "") return items;
 
