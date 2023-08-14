@@ -51,12 +51,12 @@ app.get("/", (req, res) => {
   res.json(AuthorizationHelper.getCredentials());
 });
 
-app.get("/canceledOrders", async (req, res) => {
-  res.json(SearchHelper.CanceledOrders(req, res));
+app.post("/canceledOrders", async (req, res) => {
+  SearchHelper.CanceledOrders(JSON.parse(req.body), res);
 });
 
-app.get("/shippedOrders", async (req, res) => {
-  res.json(SearchHelper.ShippedOrders(req, res));
+app.post("/shippedOrders", async (req, res) => {
+  SearchHelper.ShippedOrders(JSON.parse(req.body), res);
 });
 
 app.listen(2020, () => {
