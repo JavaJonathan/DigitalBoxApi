@@ -1,8 +1,3 @@
-const { google } = require("googleapis");
-const AuthorizationHelper = require("./AuthorizationHelper");
-const fs = require("fs");
-const LogHelper = require("./LogHelper");
-
 const cancelledFolderId = "1_6WgFBHipB7gn3jpn3SSwfIWljT89y_L";
 const shippedFolderId = "1Q-XbH5ec5rVE7yiz_z9kelJMtsAuhYyh";
 const toBeShippedFolder = "1_-sgosO7Pyq5b5ofxrD7z1Bb5uck8q8Z";

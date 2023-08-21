@@ -1,11 +1,6 @@
 const express = require("express");
 const cors = require("cors");
 const bodyParser = require("body-parser");
-const ControllerHelper = require("./ContentHelper");
-const UploadHelper = require("./UploadHelper");
-const MoveFileHelper = require("./MoveFileHelper");
-const fs = require("fs");
-const { Console } = require("console");
 const AuthorizationHelper = require("./AuthorizationHelper");
 const FileHelper = require("./FileHelper");
 const SearchHelper = require("./SearchHelper");

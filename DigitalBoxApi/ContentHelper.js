@@ -1,8 +1,4 @@
-const fs = require("fs");
-const readline = require("readline");
-const { google } = require("googleapis");
 const { PdfReader } = require("pdfreader");
-const express = require("express");
 
 exports.DownloadFile = async (drive, fileIdParam, filePath) => {
   let progress = 0;
