@@ -1,3 +1,4 @@
+const fs = require("fs");
 const { PdfReader } = require("pdfreader");
 
 exports.DownloadFile = async (drive, fileIdParam, filePath) => {
