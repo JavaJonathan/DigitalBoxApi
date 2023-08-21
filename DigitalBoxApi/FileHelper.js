@@ -225,7 +225,7 @@ const updateCancelledOrders = (currentDBState, orders) => {
     currentDBState.CancelledOrders = [...orders]
   } else {
     currentDBState.CancelledOrders.push(
-      orders
+      ...orders
     );
   }
 };
