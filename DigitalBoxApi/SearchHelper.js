@@ -29,7 +29,7 @@ exports.CanceledOrders = async (request, response) => {
         //we need to filter out all saved shipped orders that do not match the new json object design
         let orders = jsonDB.CancelledOrders.filter(order => order.FileContents !== undefined)
 
-        HttpHelper.respondWithCanceledOrShippedOrders(
+        HttpHelper.respondWithCanceledOrders(
           response,
           orders,
           request,
@@ -51,7 +51,7 @@ exports.ShippedOrders = async (request, response) => {
 
         console.log(orders);
 
-        HttpHelper.respondWithCanceledOrShippedOrders(
+        HttpHelper.respondWithShippedOrders(
           response,
           orders,
           request,
