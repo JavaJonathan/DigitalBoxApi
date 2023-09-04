@@ -1,7 +1,7 @@
 const { google } = require("googleapis");
 const fs = require("fs");
 
-const backUpFolderId = "1MePmV9XLJpl4RAu7FeH6WTpyG9kMu294";
+const backUpFolderId = "1KTz0I8r3YxuvHS78vUcqBlKPKUdOBLQn";
 
 exports.BackupDatabase = async (googleDrive) => {
   let fileIds = [];
@@ -58,7 +58,7 @@ const trimDatabaseBackups = (fileIdParam, googleDrive) => {
 const uploadDatabaseBackup = async (googleDrive) => {
   const fileMetadata = {
     name: `${new Date().toLocaleString()}-BackUp.json`,
-    parents: ["1MePmV9XLJpl4RAu7FeH6WTpyG9kMu294"],
+    parents: ["1KTz0I8r3YxuvHS78vUcqBlKPKUdOBLQn"],
   };
 
   var media = {
