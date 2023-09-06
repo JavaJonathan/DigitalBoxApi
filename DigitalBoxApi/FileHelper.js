@@ -8,7 +8,7 @@ const MoveFileHelper = require("./MoveFileHelper");
 const BackupHelper = require("./BackupHelper");
 const HttpHelper = require("./HttpHelper");
 
-exports.JsonFileId = "1TEz1AMqL_aDsW4nNqtOqLAalZfaeyufN";
+exports.JsonFileId = "1SXk56MUCK5Q8E2UVo3UsuWFgy7h05qrF";
 
 exports.GetOrdersFromFile = async (request, response) => {
   let fileIds = [];
@@ -114,7 +114,7 @@ exports.CancelOrShipOrders = async (request, response) => {
   }
 };
 
-const getJSONFile = exports.getJSONFile = async (googleDrive) => {
+const getJSONFile = (exports.getJSONFile = async (googleDrive) => {
   return googleDrive.files
     .get({ fileId: `${exports.JsonFileId}`, alt: "media" })
     .then((response) => {
@@ -123,7 +123,7 @@ const getJSONFile = exports.getJSONFile = async (googleDrive) => {
     .catch((error) => {
       throw error;
     });
-};
+});
 
 const markDBAsNotBeingUpdated = async (googleDrive) => {
   let jsonDB = await getJSONFile(googleDrive);
@@ -202,30 +202,26 @@ const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {
 };
 
 const updateCancelledOrders = (currentDBState, orders) => {
-  orders = orders.map(order => {
-    return  { ...order, canceledOn: new Date().toLocaleString() }
-  })
+  orders = orders.map((order) => {
+    return { ...order, canceledOn: new Date().toLocaleString() };
+  });
 
   if (!currentDBState.CancelledOrders) {
-    currentDBState.CancelledOrders = [...orders]
+    currentDBState.CancelledOrders = [...orders];
   } else {
-    currentDBState.CancelledOrders.push(
-      ...orders
-    );
+    currentDBState.CancelledOrders.push(...orders);
   }
 };
 
 const updateShippedOrders = (currentDBState, orders) => {
-  orders = orders.map(order => {
-    return  { ...order, shippedOn: new Date().toLocaleString() }
-  })
+  orders = orders.map((order) => {
+    return { ...order, shippedOn: new Date().toLocaleString() };
+  });
 
   if (!currentDBState.ShippedOrders) {
-    currentDBState.ShippedOrders = [...orders]
+    currentDBState.ShippedOrders = [...orders];
   } else {
-    currentDBState.ShippedOrders.push(
-      ...orders
-    );
+    currentDBState.ShippedOrders.push(...orders);
   }
 };
 

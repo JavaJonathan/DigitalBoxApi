@@ -68,30 +68,11 @@ exports.respondToClient = (response, jsonDB, request, message) => {
 };
 
 exports.respondWithCanceledOrders = (response, orders, request, message) => {
-    response.json({
-      Orders: filterOrders(
-        request,
-        orders.sort((a, b) => {
-          return (
-            Date.parse(b.canceledOn) -
-            Date.parse(a.canceledOn)
-          );
-        }),
-      ),
-      Message: message,
-      Token: AuthorizationHelper.authToken,
-    });
-  };
-
-exports.respondWithShippedOrders = (response, orders, request, message) => {
   response.json({
     Orders: filterOrders(
       request,
       orders.sort((a, b) => {
-        return (
-          Date.parse(b.shippedOn) -
-          Date.parse(a.shippedOn)
-        );
+        return Date.parse(b.canceledOn) - Date.parse(a.canceledOn);
       }),
     ),
     Message: message,
@@ -99,6 +80,18 @@ exports.respondWithShippedOrders = (response, orders, request, message) => {
   });
 };
 
+exports.respondWithShippedOrders = (response, orders, request, message) => {
+  response.json({
+    Orders: filterOrders(
+      request,
+      orders.sort((a, b) => {
+        return Date.parse(b.shippedOn) - Date.parse(a.shippedOn);
+      }),
+    ),
+    Message: message,
+    Token: AuthorizationHelper.authToken,
+  });
+};
 
 const filterOrders = (request, items) => {
   if (!request.Filter || request.Filter === "") return items;

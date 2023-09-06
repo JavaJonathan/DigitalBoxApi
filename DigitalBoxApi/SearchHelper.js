@@ -5,7 +5,9 @@ const AuthorizationHelper = require("./AuthorizationHelper");
 
 exports.SearchOrders = async (request, response) => {
   try {
-    let googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
+    let googleDrive = await AuthorizationHelper.authorizeWithGoogle(
+      request.token,
+    );
     let jsonDB = await FileHelper.getJSONFile(googleDrive);
     HttpHelper.respondToClient(
       response,
@@ -20,45 +22,51 @@ exports.SearchOrders = async (request, response) => {
 };
 
 exports.CanceledOrders = async (request, response) => {
-    try {
-        let googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
-        let jsonDB = await FileHelper.getJSONFile(googleDrive);
+  try {
+    let googleDrive = await AuthorizationHelper.authorizeWithGoogle(
+      request.token,
+    );
+    let jsonDB = await FileHelper.getJSONFile(googleDrive);
 
-        console.log(jsonDB)
+    console.log(jsonDB);
 
-        //we need to filter out all saved shipped orders that do not match the new json object design
-        let orders = jsonDB.CancelledOrders.filter(order => order.FileContents !== undefined)
+    //we need to filter out all saved shipped orders that do not match the new json object design
+    let orders = jsonDB.CancelledOrders.filter(
+      (order) => order.FileContents !== undefined,
+    );
 
-        HttpHelper.respondWithCanceledOrders(
-          response,
-          orders,
-          request,
-          "Search results returned successfully!", // TO DO: Get the message from the file helper so you always know when the last time the db was updated
-        );
-      } catch (error) {
-        HttpHelper.respondToClientWithError(response, error);
-        LogHelper.LogError(error);
-      }
-}
+    HttpHelper.respondWithCanceledOrders(
+      response,
+      orders,
+      request,
+      "Search results returned successfully!", // TO DO: Get the message from the file helper so you always know when the last time the db was updated
+    );
+  } catch (error) {
+    HttpHelper.respondToClientWithError(response, error);
+    LogHelper.LogError(error);
+  }
+};
 
 exports.ShippedOrders = async (request, response) => {
-    try {
-        let googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
-        let jsonDB = await FileHelper.getJSONFile(googleDrive);
+  try {
+    let googleDrive = await AuthorizationHelper.authorizeWithGoogle(
+      request.token,
+    );
+    let jsonDB = await FileHelper.getJSONFile(googleDrive);
 
-        //we need to filter out all saved shipped orders that do not match the new json object design
-        let orders = jsonDB.ShippedOrders.filter(order => order.FileContents !== undefined)
+    //we need to filter out all saved shipped orders that do not match the new json object design
+    let orders = jsonDB.ShippedOrders.filter(
+      (order) => order.FileContents !== undefined,
+    );
 
-        console.log(orders);
-
-        HttpHelper.respondWithShippedOrders(
-          response,
-          orders,
-          request,
-          "Search results returned successfully!", // TO DO: Get the message from the file helper so you always know when the last time the db was updated
-        );
-      } catch (error) {
-        HttpHelper.respondToClientWithError(response, error);
-        LogHelper.LogError(error);
-      }
-}
+    HttpHelper.respondWithShippedOrders(
+      response,
+      orders,
+      request,
+      "Search results returned successfully!", // TO DO: Get the message from the file helper so you always know when the last time the db was updated
+    );
+  } catch (error) {
+    HttpHelper.respondToClientWithError(response, error);
+    LogHelper.LogError(error);
+  }
+};
