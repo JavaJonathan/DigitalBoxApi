@@ -8,7 +8,7 @@ const MoveFileHelper = require("./MoveFileHelper");
 const BackupHelper = require("./BackupHelper");
 const HttpHelper = require("./HttpHelper");
 
-exports.JsonFileId = "1SXk56MUCK5Q8E2UVo3UsuWFgy7h05qrF";
+exports.JsonFileId = "1Es2hHSXsd2ZGL6pnPKKFohUgYTj_4AeZ";
 
 exports.GetOrdersFromFile = async (request, response) => {
   let fileIds = [];
@@ -42,7 +42,7 @@ exports.GetOrdersFromFile = async (request, response) => {
         message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
       }
       await writeToJsonFile(jsonDB, googleDrive);
-      updateDBWithNewItems(newFiles, jsonDB, googleDrive);
+      message = updateDBWithNewItems(newFiles, jsonDB, googleDrive, message);
     }
 
     HttpHelper.respondToClient(response, jsonDB, request, message);
@@ -89,6 +89,7 @@ exports.CancelOrShipOrders = async (request, response) => {
       request.Action,
     );
     MoveFileHelper.MoveFiles(googleDrive, request.Orders, request.Action);
+    BackupHelper.BackupDatabase(googleDrive);
 
     if (request.Action === "ship") {
       await downloadShippedFiles(googleDrive, request.Orders);
@@ -99,7 +100,6 @@ exports.CancelOrShipOrders = async (request, response) => {
         `${request.Orders.length} order(s) shipped successfully`,
       );
     } else if (request.Action === "cancel") {
-      BackupHelper.BackupDatabase(googleDrive);
       HttpHelper.respondToClient(
         response,
         newDBState,
@@ -143,18 +143,31 @@ const removeFilesFromDB = (jsonDB, removedFiles) => {
   return jsonDB;
 };
 
-const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive) => {
+const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive, message) => {
   let newOrders = [];
-  for (let counter = 0; counter < newFiles.length; counter++) {
-    let PDFObject = {};
+  try {
+    for (let counter = 0; counter < newFiles.length; counter++) {
+      console.log(`Added ${counter + 1}/${newFiles.length} to the database.`);
+      let PDFObject = {};
 
-    await ContentHelper.DownloadFile(
-      googleDrive,
-      newFiles[counter],
-      "photo.pdf",
-    );
-    PDFObject = await ContentHelper.GetText(newFiles[counter]);
-    newOrders.push(PDFObject);
+      await ContentHelper.DownloadFile(
+        googleDrive,
+        newFiles[counter],
+        "photo.pdf",
+      );
+      PDFObject = await ContentHelper.GetText(newFiles[counter]);
+      newOrders.push(PDFObject);
+
+      if (newOrders.length > 10) {
+        jsonDB = await getJSONFile(googleDrive);
+        jsonDB.Orders.push(...newOrders);
+        await writeToJsonFile(jsonDB, googleDrive);
+        newOrders = [];
+      }
+    }
+  } catch(exception) {
+    message = "Some of your orders were not successfully added. Please try again."
+    LogHelper.LogError(exception);
   }
 
   if (newOrders.length > 0) {
@@ -163,16 +176,20 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive) => {
     jsonDB.Updating = false;
     await writeToJsonFile(jsonDB, googleDrive);
   }
+
+  return message;
 };
 
 const getUpdateFinishTime = (numberOfItems) => {
   let date = new Date();
-  date.setMinutes(date.getMinutes() + Math.ceil(numberOfItems / 90));
+  date.setMinutes(date.getMinutes() + Math.ceil(numberOfItems / 60));
   return date.toLocaleString();
 };
 
 const downloadShippedFiles = async (googleDrive, orders) => {
   for (let counter = 0; counter < orders.length; counter++) {
+    console.log(`${counter + 1}/${orders.length} order(s) have been downloaded.`);
+
     await ContentHelper.DownloadFile(
       googleDrive,
       orders[counter],

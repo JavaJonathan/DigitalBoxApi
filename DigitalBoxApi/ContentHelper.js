@@ -38,7 +38,7 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
             if (process.stdout.isTTY) {
               process.stdout.clearLine();
               process.stdout.cursorTo(0);
-              process.stdout.write(`Downloaded ${progress} bytes`);
+              // process.stdout.write(`Downloaded ${progress} bytes`);
             }
           })
           .pipe(dest);

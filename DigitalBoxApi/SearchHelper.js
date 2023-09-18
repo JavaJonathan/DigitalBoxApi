@@ -4,16 +4,22 @@ const FileHelper = require("./FileHelper");
 const AuthorizationHelper = require("./AuthorizationHelper");
 
 exports.SearchOrders = async (request, response) => {
+  let message = "Search results returned successfully!";
   try {
     let googleDrive = await AuthorizationHelper.authorizeWithGoogle(
       request.token,
     );
     let jsonDB = await FileHelper.getJSONFile(googleDrive);
+
+    if (jsonDB.Updating === true) {
+      message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
+    }
+
     HttpHelper.respondToClient(
       response,
       jsonDB,
       request,
-      "Search results returned successfully!", // TO DO: Get the message from the file helper so you always know when the last time the db was updated
+      message, // TO DO: Get the message from the file helper so you always know when the last time the db was updated
     );
   } catch (error) {
     HttpHelper.respondToClientWithError(response, error);
