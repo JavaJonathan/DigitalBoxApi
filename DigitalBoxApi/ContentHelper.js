@@ -1,5 +1,6 @@
 const fs = require("fs");
 const { PdfReader } = require("pdfreader");
+const LogHelper = require("./LogHelper");
 
 exports.DownloadFile = async (drive, fileIdParam, filePath) => {
   let progress = 0;
@@ -44,6 +45,8 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
           .pipe(dest);
       })
       .catch((error) => {
+        console.log('Error downloading file.')
+        LogHelper.LogError(error);
         reject(error);
       });
   });

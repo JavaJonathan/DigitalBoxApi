@@ -23,7 +23,8 @@ exports.UpdateJsonFile = async (drive) => {
       },
       function (err, file) {
         if (err) {
-          // Handle error
+          console.log('Error updating json file.')
+          LogHelper.LogError(err);
           reject(err);
         } else {
           resolve(console.log("Json File Updated."));
@@ -31,6 +32,8 @@ exports.UpdateJsonFile = async (drive) => {
       },
     );
   }).catch((error) => {
+    console.log('Error updating json file.')
+    LogHelper.LogError(error);
     throw error;
   });
 };
