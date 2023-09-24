@@ -5,6 +5,8 @@ const FileHelper = require("./FileHelper");
 const LogHelper = require("./LogHelper");
 
 exports.UpdateJsonFile = async (drive) => {
+
+  var jsonFileId = await FileHelper.JsonFileId(drive)
   var fileMetadata = {
     name: "orders.json",
   };
@@ -15,7 +17,7 @@ exports.UpdateJsonFile = async (drive) => {
   return new Promise((resolve, reject) => {
     drive.files.update(
       {
-        fileId: `${FileHelper.JsonFileId}`,
+        fileId: `${jsonFileId}`,
         resource: fileMetadata,
         media: media,
         fields: "id",

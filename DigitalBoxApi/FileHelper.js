@@ -8,7 +8,22 @@ const MoveFileHelper = require("./MoveFileHelper");
 const BackupHelper = require("./BackupHelper");
 const HttpHelper = require("./HttpHelper");
 
-exports.JsonFileId = "1Es2hHSXsd2ZGL6pnPKKFohUgYTj_4AeZ";
+exports.JsonFileId = async (googleDrive) => {
+  return googleDrive.files
+        .list({
+          q: "name='orders.json' and trashed=false",
+          fields: "nextPageToken, files(id)",
+          spaces: "drive"
+        })
+        .then((response) => {
+            return response.data.files[0].id
+        })
+        .catch((error) => {
+          console.log(error.data.errors);
+          reject(error);
+        });
+}
+
 
 exports.GetOrdersFromFile = async (request, response) => {
   let fileIds = [];
@@ -27,7 +42,7 @@ exports.GetOrdersFromFile = async (request, response) => {
     if (jsonDB.Updating === true) {
       message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
     } else {
-      let files = CompareHelper.CheckForDbUpdates(fileIds, jsonDB);
+      let files = await CompareHelper.CheckForDbUpdates(fileIds, jsonDB, googleDrive);
       newFiles = files[0];
       removedFiles = files[1];
     }
@@ -42,7 +57,7 @@ exports.GetOrdersFromFile = async (request, response) => {
         message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
       }
       await writeToJsonFile(jsonDB, googleDrive);
-      message = updateDBWithNewItems(newFiles, jsonDB, googleDrive, message);
+      updateDBWithNewItems(newFiles, jsonDB, googleDrive, message);
     }
 
     HttpHelper.respondToClient(response, jsonDB, request, message);
@@ -82,6 +97,9 @@ exports.CancelOrShipOrders = async (request, response) => {
       return;
     }
 
+    //Theres a bug in the v1 implementation that diff checks the db on every search but when someone is shipping
+    //and someone else searches, it sees the temporary diff and adds the file back
+    //the v2 implementation will solve that
     newDBState = removeOrdersFromDB(
       jsonDB,
       request.Orders,
@@ -115,8 +133,10 @@ exports.CancelOrShipOrders = async (request, response) => {
 };
 
 const getJSONFile = (exports.getJSONFile = async (googleDrive) => {
+  let fileId = await exports.JsonFileId(googleDrive);
+  console.log(fileId);
   return googleDrive.files
-    .get({ fileId: `${exports.JsonFileId}`, alt: "media" })
+    .get({ fileId: `${fileId}`, alt: "media" })
     .then((response) => {
       return response.data;
     })
@@ -166,7 +186,6 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive, message) => {
       }
     }
   } catch(exception) {
-    message = "Some of your orders were not successfully added. Please try again."
     LogHelper.LogError(exception);
   }
 
@@ -176,8 +195,6 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive, message) => {
     jsonDB.Updating = false;
     await writeToJsonFile(jsonDB, googleDrive);
   }
-
-  return message;
 };
 
 const getUpdateFinishTime = (numberOfItems) => {
@@ -187,14 +204,22 @@ const getUpdateFinishTime = (numberOfItems) => {
 };
 
 const downloadShippedFiles = async (googleDrive, orders) => {
-  for (let counter = 0; counter < orders.length; counter++) {
-    console.log(`${counter + 1}/${orders.length} order(s) have been downloaded.`);
+  let downloadedOrders = [];
 
-    await ContentHelper.DownloadFile(
-      googleDrive,
-      orders[counter],
-      JSON.parse(fs.readFileSync("botConfigs.json")).DownloadFolderPath,
-    );
+  try {
+    for (let counter = 0; counter < orders.length; counter++) {
+      await ContentHelper.DownloadFile(
+        googleDrive,
+        orders[counter],
+        JSON.parse(fs.readFileSync("botConfigs.json")).DownloadFolderPath,
+      );
+      downloadedOrders.push(orders[counter]);
+    }
+  }
+  catch(exception) {
+    console.log(`Unable to ship the following files: `);
+    orders.filter(order => !downloadedOrders.includes(order)).forEach(missedOrder => console.log(missedOrder));
+    MoveFileHelper.MoveFilesBack(googleDrive, orders.filter(order => !downloadedOrders.includes(order)));
   }
 };
 

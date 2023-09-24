@@ -1,15 +1,16 @@
 const FileHelper = require("./FileHelper");
 
-exports.CheckForDbUpdates = (fileIds, jsonDB) => {
+exports.CheckForDbUpdates = async (fileIds, jsonDB, googleDrive) => {
   let unaccountedFiles = [];
   let fileIdDictionary = {};
   let removedFiles = [];
+  let jsonFileId = await FileHelper.JsonFileId(googleDrive);
 
   createFileIdDictionary(jsonDB.Orders, fileIdDictionary);
   fileIds.forEach((fileId) => {
     fileIdDictionary;
     if (!fileIdDictionary.hasOwnProperty(fileId)) {
-      if (fileId !== FileHelper.JsonFileId) {
+      if (fileId !== jsonFileId) {
         unaccountedFiles.push(fileId);
       }
     } else {
