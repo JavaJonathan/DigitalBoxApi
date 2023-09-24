@@ -9,7 +9,7 @@ exports.authorizeWithGoogle = async (token) => {
   const oAuth2Client = new google.auth.OAuth2(
     credentials.ClientId,
     credentials.ClientSecret,
-    "http://localhost:3000/"
+    "http://localhost:3000/",
   );
   oAuth2Client.credentials = token;
   oAuth2Client.apiKey = credentials.ApiKey;

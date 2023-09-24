@@ -10,20 +10,15 @@ const HttpHelper = require("./HttpHelper");
 
 exports.JsonFileId = async (googleDrive) => {
   return googleDrive.files
-        .list({
-          q: "name='orders.json' and trashed=false",
-          fields: "nextPageToken, files(id)",
-          spaces: "drive"
-        })
-        .then((response) => {
-            return response.data.files[0].id
-        })
-        .catch((error) => {
-          console.log(error.data.errors);
-          reject(error);
-        });
-}
-
+    .list({
+      q: "name='orders.json' and trashed=false",
+      fields: "nextPageToken, files(id)",
+      spaces: "drive",
+    })
+    .then((response) => {
+      return response.data.files[0].id;
+    });
+};
 
 exports.GetOrdersFromFile = async (request, response) => {
   let fileIds = [];
@@ -42,7 +37,11 @@ exports.GetOrdersFromFile = async (request, response) => {
     if (jsonDB.Updating === true) {
       message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
     } else {
-      let files = await CompareHelper.CheckForDbUpdates(fileIds, jsonDB, googleDrive);
+      let files = await CompareHelper.CheckForDbUpdates(
+        fileIds,
+        jsonDB,
+        googleDrive,
+      );
       newFiles = files[0];
       removedFiles = files[1];
     }
@@ -134,14 +133,10 @@ exports.CancelOrShipOrders = async (request, response) => {
 
 const getJSONFile = (exports.getJSONFile = async (googleDrive) => {
   let fileId = await exports.JsonFileId(googleDrive);
-  console.log(fileId);
   return googleDrive.files
     .get({ fileId: `${fileId}`, alt: "media" })
     .then((response) => {
       return response.data;
-    })
-    .catch((error) => {
-      throw error;
     });
 });
 
@@ -185,7 +180,7 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive, message) => {
         newOrders = [];
       }
     }
-  } catch(exception) {
+  } catch (exception) {
     LogHelper.LogError(exception);
   }
 
@@ -215,11 +210,15 @@ const downloadShippedFiles = async (googleDrive, orders) => {
       );
       downloadedOrders.push(orders[counter]);
     }
-  }
-  catch(exception) {
+  } catch (exception) {
     console.log(`Unable to ship the following files: `);
-    orders.filter(order => !downloadedOrders.includes(order)).forEach(missedOrder => console.log(missedOrder));
-    MoveFileHelper.MoveFilesBack(googleDrive, orders.filter(order => !downloadedOrders.includes(order)));
+    orders
+      .filter((order) => !downloadedOrders.includes(order))
+      .forEach((missedOrder) => console.log(missedOrder));
+    MoveFileHelper.MoveFilesBack(
+      googleDrive,
+      orders.filter((order) => !downloadedOrders.includes(order)),
+    );
   }
 };
 
@@ -298,7 +297,8 @@ const getPdfFiles = async (googleDrive, fileIds) => {
           }
         })
         .catch((error) => {
-          console.log(error);
+          console.log('Unable to retrive PDF\'s.');
+          LogHelper.LogError(error);
           fetch = false;
           reject(error);
         });

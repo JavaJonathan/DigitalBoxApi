@@ -1,19 +1,19 @@
-const { google } = require("googleapis");
 const fs = require("fs");
+const LogHelper = require("./LogHelper");
 
 const backUpFolderId = "1MePmV9XLJpl4RAu7FeH6WTpyG9kMu294";
 
 exports.BackupDatabase = async (googleDrive) => {
   let fileIds = [];
-
   try {
     await uploadDatabaseBackup(googleDrive);
     fileIds = await getDatabaseBackups(googleDrive, fileIds);
 
     if (fileIds.length > 100)
       await trimDatabaseBackups(fileIds[100], googleDrive);
-  } catch (err) {
-    console.log(err);
+  } catch (error) {
+    console.log('Failed to back up database.');
+    LogHelper.LogError(error);
   }
 };
 
@@ -32,7 +32,8 @@ const getDatabaseBackups = async (googleDrive, fileIds) => {
         resolve(fileIds);
       })
       .catch((error) => {
-        console.log(error);
+        console.log('Failed to retrieve database back ups.');
+        LogHelper.LogError(error);
         fetch = false;
         reject(error);
       });
@@ -49,7 +50,8 @@ const trimDatabaseBackups = (fileIdParam, googleDrive) => {
         resolve(console.log("DB Backups Trimmed"));
       })
       .catch((error) => {
-        console.log(error);
+        console.log('Failed to trim database back ups.');
+        LogHelper.LogError(error);
         reject(error);
       });
   });
@@ -77,7 +79,8 @@ const uploadDatabaseBackup = async (googleDrive) => {
         resolve(console.log("DB Backup Uploaded"));
       })
       .catch((error) => {
-        console.log(error);
+        console.log('Failed to upload database back up.');
+        LogHelper.LogError(error);
         reject(error);
       });
   });

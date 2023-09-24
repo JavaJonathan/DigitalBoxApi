@@ -20,7 +20,7 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
     drive.files
       .get(
         { fileId: `${fileIdParam}`, alt: "media" },
-        { responseType: "stream" }
+        { responseType: "stream" },
       )
       .then((res) => {
         res.data

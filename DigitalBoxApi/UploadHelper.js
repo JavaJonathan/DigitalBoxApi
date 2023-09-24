@@ -5,8 +5,7 @@ const FileHelper = require("./FileHelper");
 const LogHelper = require("./LogHelper");
 
 exports.UpdateJsonFile = async (drive) => {
-
-  var jsonFileId = await FileHelper.JsonFileId(drive)
+  var jsonFileId = await FileHelper.JsonFileId(drive);
   var fileMetadata = {
     name: "orders.json",
   };
@@ -29,7 +28,7 @@ exports.UpdateJsonFile = async (drive) => {
         } else {
           resolve(console.log("Json File Updated."));
         }
-      }
+      },
     );
   }).catch((error) => {
     throw error;

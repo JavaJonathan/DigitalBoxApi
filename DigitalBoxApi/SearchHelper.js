@@ -34,8 +34,6 @@ exports.CanceledOrders = async (request, response) => {
     );
     let jsonDB = await FileHelper.getJSONFile(googleDrive);
 
-    console.log(jsonDB);
-
     //we need to filter out all saved shipped orders that do not match the new json object design
     let orders = jsonDB.CancelledOrders.filter(
       (order) => order.FileContents !== undefined,

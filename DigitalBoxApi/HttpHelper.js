@@ -1,7 +1,9 @@
 const AuthorizationHelper = require("./AuthorizationHelper");
+const LogHelper = require("./LogHelper");
 
 exports.respondToClientWithError = (response, error) => {
-  console.log(error);
+  console.log('An error occurred.');
+  LogHelper.LogError(error);
 
   if (error.response) {
     let errorCode = error.response.status;
@@ -42,7 +44,6 @@ exports.respondToClientWithError = (response, error) => {
       Token: AuthorizationHelper.authToken,
     });
   } else {
-    console.log(`Error Code: ${error}`);
     response.json({
       Orders: [],
       Message: "Sorry, we encountered an error. Please try again.",
