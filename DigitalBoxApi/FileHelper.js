@@ -109,12 +109,12 @@ exports.CancelOrShipOrders = async (request, response) => {
     BackupHelper.BackupDatabase(googleDrive);
 
     if (request.Action === "ship") {
-      await downloadShippedFiles(googleDrive, request.Orders);
+      let returnMessage = await downloadShippedFiles(googleDrive, request.Orders);
       HttpHelper.respondToClient(
         response,
         newDBState,
         request,
-        `${request.Orders.length} order(s) shipped successfully`,
+        returnMessage,
       );
     } else if (request.Action === "cancel") {
       HttpHelper.respondToClient(
@@ -200,6 +200,7 @@ const getUpdateFinishTime = (numberOfItems) => {
 
 const downloadShippedFiles = async (googleDrive, orders) => {
   let downloadedOrders = [];
+  let message = `${orders.length} order(s) shipped successfully`;
 
   try {
     for (let counter = 0; counter < orders.length; counter++) {
@@ -211,15 +212,16 @@ const downloadShippedFiles = async (googleDrive, orders) => {
       downloadedOrders.push(orders[counter]);
     }
   } catch (exception) {
-    console.log(`Unable to ship the following files: `);
+    message = "Some of your files were not downloaded. Please check the api console to see which files failed."
+    console.log(`Unable to download the following files: `);
     orders
       .filter((order) => !downloadedOrders.includes(order))
-      .forEach((missedOrder) => console.log(missedOrder));
-    MoveFileHelper.MoveFilesBack(
-      googleDrive,
-      orders.filter((order) => !downloadedOrders.includes(order)),
-    );
+      .forEach((missedOrder) => console.log(`https://drive.google.com/file/d/${missedOrder}/view`));
+
+    LogHelper.LogError(exception);
   }
+
+  return message;
 };
 
 const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {

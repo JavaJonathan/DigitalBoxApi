@@ -2,7 +2,7 @@ const AuthorizationHelper = require("./AuthorizationHelper");
 const LogHelper = require("./LogHelper");
 
 exports.respondToClientWithError = (response, error) => {
-  console.log('An error occurred.');
+  console.log(`An error occurred at ${new Date().toLocaleString()}.`);
   LogHelper.LogError(error);
 
   if (error.response) {
@@ -44,6 +44,7 @@ exports.respondToClientWithError = (response, error) => {
       Token: AuthorizationHelper.authToken,
     });
   } else {
+    console.log(`Error Code: ${error}`);
     response.json({
       Orders: [],
       Message: "Sorry, we encountered an error. Please try again.",
