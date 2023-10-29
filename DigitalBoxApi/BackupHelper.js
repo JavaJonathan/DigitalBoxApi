@@ -1,7 +1,7 @@
 const fs = require("fs");
 const LogHelper = require("./LogHelper");
 
-const backUpFolderId = "1MePmV9XLJpl4RAu7FeH6WTpyG9kMu294";
+const backUpFolderId = "1KTz0I8r3YxuvHS78vUcqBlKPKUdOBLQn";
 
 exports.BackupDatabase = async (googleDrive) => {
   let fileIds = [];
