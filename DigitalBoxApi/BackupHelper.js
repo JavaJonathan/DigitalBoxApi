@@ -60,7 +60,7 @@ const trimDatabaseBackups = (fileIdParam, googleDrive) => {
 const uploadDatabaseBackup = async (googleDrive) => {
   const fileMetadata = {
     name: `${new Date().toLocaleString()}-BackUp.json`,
-    parents: ["1MePmV9XLJpl4RAu7FeH6WTpyG9kMu294"],
+    parents: [`${backUpFolderId}`],
   };
 
   var media = {

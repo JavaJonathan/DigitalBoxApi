@@ -8,16 +8,22 @@ const MoveFileHelper = require("./MoveFileHelper");
 const BackupHelper = require("./BackupHelper");
 const HttpHelper = require("./HttpHelper");
 
+let jsonFileId = "";
+
 exports.JsonFileId = async (googleDrive) => {
-  return googleDrive.files
+  if(jsonFileId === "") {
+    await googleDrive.files
     .list({
       q: "name='orders.json' and trashed=false",
       fields: "nextPageToken, files(id)",
       spaces: "drive",
     })
     .then((response) => {
-      return response.data.files[0].id;
+      jsonFileId = response.data.files[0].id;
     });
+    return jsonFileId;
+  } 
+  else return jsonFileId;
 };
 
 exports.GetOrdersFromFile = async (request, response) => {
