@@ -179,6 +179,7 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive, message) => {
       PDFObject = await ContentHelper.GetText(newFiles[counter]);
       newOrders.push(PDFObject);
 
+      //it can get stuck here if this causes the newOrders array to be zero since we are setting the updating value to false
       if (newOrders.length > 10) {
         jsonDB = await getJSONFile(googleDrive);
         jsonDB.Orders.push(...newOrders);
@@ -287,7 +288,7 @@ const getPdfFiles = async (googleDrive, fileIds) => {
     while (fetch) {
       await googleDrive.files
         .list({
-          q: "'1_-sgosO7Pyq5b5ofxrD7z1Bb5uck8q8Z' in parents and trashed=false",
+          q: "'1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU' in parents and trashed=false", //toBeShippedFolder
           fields: "nextPageToken, files(id)",
           spaces: "drive",
           pageToken: pageToken,
