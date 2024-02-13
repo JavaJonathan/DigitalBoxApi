@@ -179,8 +179,8 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive, message) => {
       PDFObject = await ContentHelper.GetText(newFiles[counter]);
       newOrders.push(PDFObject);
 
-      //it can get stuck here if this causes the newOrders array to be zero since we are setting the updating value to false
-      if (newOrders.length > 10) {
+      //we need to ensure this code block does not run if it's the last batch of files so the updating value gets set to false
+      if (newOrders.length > 10 && ( newFiles.length - ( counter + 1 ) ) !== 0) {
         jsonDB = await getJSONFile(googleDrive);
         jsonDB.Orders.push(...newOrders);
         await writeToJsonFile(jsonDB, googleDrive);
