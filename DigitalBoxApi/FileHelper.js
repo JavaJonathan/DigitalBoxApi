@@ -11,19 +11,18 @@ const HttpHelper = require("./HttpHelper");
 let jsonFileId = "";
 
 exports.JsonFileId = async (googleDrive) => {
-  if(jsonFileId === "") {
+  if (jsonFileId === "") {
     await googleDrive.files
-    .list({
-      q: "name='orders.json' and trashed=false",
-      fields: "nextPageToken, files(id)",
-      spaces: "drive",
-    })
-    .then((response) => {
-      jsonFileId = response.data.files[0].id;
-    });
+      .list({
+        q: "name='orders.json' and trashed=false",
+        fields: "nextPageToken, files(id)",
+        spaces: "drive",
+      })
+      .then((response) => {
+        jsonFileId = response.data.files[0].id;
+      });
     return jsonFileId;
-  } 
-  else return jsonFileId;
+  } else return jsonFileId;
 };
 
 exports.GetOrdersFromFile = async (request, response) => {
@@ -115,13 +114,11 @@ exports.CancelOrShipOrders = async (request, response) => {
     BackupHelper.BackupDatabase(googleDrive);
 
     if (request.Action === "ship") {
-      let returnMessage = await downloadShippedFiles(googleDrive, request.Orders);
-      HttpHelper.respondToClient(
-        response,
-        newDBState,
-        request,
-        returnMessage,
+      let returnMessage = await downloadShippedFiles(
+        googleDrive,
+        request.Orders,
       );
+      HttpHelper.respondToClient(response, newDBState, request, returnMessage);
     } else if (request.Action === "cancel") {
       HttpHelper.respondToClient(
         response,
@@ -180,7 +177,7 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive, message) => {
       newOrders.push(PDFObject);
 
       //we need to ensure this code block does not run if it's the last batch of files so the updating value gets set to false
-      if (newOrders.length > 10 && ( newFiles.length - ( counter + 1 ) ) !== 0) {
+      if (newOrders.length > 10 && newFiles.length - (counter + 1) !== 0) {
         jsonDB = await getJSONFile(googleDrive);
         jsonDB.Orders.push(...newOrders);
         await writeToJsonFile(jsonDB, googleDrive);
@@ -219,11 +216,14 @@ const downloadShippedFiles = async (googleDrive, orders) => {
       downloadedOrders.push(orders[counter]);
     }
   } catch (exception) {
-    message = "Some of your files were not downloaded. Please check the api console to see which files failed."
+    message =
+      "Some of your files were not downloaded. Please check the api console to see which files failed.";
     console.log(`Unable to download the following files: `);
     orders
       .filter((order) => !downloadedOrders.includes(order))
-      .forEach((missedOrder) => console.log(`https://drive.google.com/file/d/${missedOrder}/view`));
+      .forEach((missedOrder) =>
+        console.log(`https://drive.google.com/file/d/${missedOrder}/view`),
+      );
 
     LogHelper.LogError(exception);
   }
@@ -275,10 +275,13 @@ const updateShippedOrders = (currentDBState, orders) => {
   }
 };
 
-const writeToJsonFile = async (jsonString, googleDrive) => {
+const writeToJsonFile = (exports.writeToJsonFile = async (
+  jsonString,
+  googleDrive,
+) => {
   fs.writeFileSync("orders.json", JSON.stringify(jsonString));
   return UploadHelper.UpdateJsonFile(googleDrive);
-};
+});
 
 const getPdfFiles = async (googleDrive, fileIds) => {
   let pageToken = null;
@@ -296,11 +299,9 @@ const getPdfFiles = async (googleDrive, fileIds) => {
         })
         .then((response) => {
           response.data.files.forEach(function (file) {
-
-            if(file.parents[0] === '1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU') {
-              fileIds.push(file.id);            
+            if (file.parents[0] === "1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU") {
+              fileIds.push(file.id);
             }
-
           });
           pageToken = response.data.nextPageToken;
 
@@ -310,7 +311,7 @@ const getPdfFiles = async (googleDrive, fileIds) => {
           }
         })
         .catch((error) => {
-          console.log('Unable to retrive PDF\'s.');
+          console.log("Unable to retrive PDF's.");
           LogHelper.LogError(error);
           fetch = false;
           reject(error);

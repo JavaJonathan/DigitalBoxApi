@@ -58,10 +58,7 @@ exports.respondToClient = (response, jsonDB, request, message) => {
     Orders: filterOrders(
       request,
       jsonDB.Orders.sort((a, b) => {
-        return (
-          Date.parse(a.FileContents[0].ShipDate) -
-          Date.parse(b.FileContents[0].ShipDate)
-        );
+        return sortOrders(a, b)
       }),
     ),
     Message: message,
@@ -74,7 +71,7 @@ exports.respondWithCanceledOrders = (response, orders, request, message) => {
     Orders: filterOrders(
       request,
       orders.sort((a, b) => {
-        return Date.parse(b.canceledOn) - Date.parse(a.canceledOn);
+        return sortOrders(a, b)
       }),
     ),
     Message: message,
@@ -87,7 +84,7 @@ exports.respondWithShippedOrders = (response, orders, request, message) => {
     Orders: filterOrders(
       request,
       orders.sort((a, b) => {
-        return Date.parse(b.shippedOn) - Date.parse(a.shippedOn);
+        return sortOrders(a, b)
       }),
     ),
     Message: message,
@@ -104,18 +101,29 @@ const filterOrders = (request, items) => {
 };
 
 const shouldBeFiltered = (item, request) => {
+  //we needed to remove the spaces due to search results not returning
+  let filter = request.Filter.replace(/\s/g, "")
+    .replace(/[^A-Za-z0-9]/g, "")
+    .toLowerCase();
+
   for (counter = 0; counter < item.FileContents.length; counter++) {
-    if (
-      //we needed to remove the spaces due to search results not returning
-      item.FileContents[counter].Title.replace(/\s/g, "")
-        .toLowerCase()
-        .includes(request.Filter.replace(/\s/g, "").toLowerCase()) ||
-      item.FileContents[counter].OrderNumber.replace(/\s/g, "")
-        .toLowerCase()
-        .includes(request.Filter.replace(/\s/g, "").toLowerCase())
-    ) {
+    let orderTitle = item.FileContents[counter].Title.replace(/\s/g, "")
+      .replace(/[^A-Za-z0-9]/g, "")
+      .toLowerCase();
+
+    let orderNumber = item.FileContents[counter].OrderNumber.replace(/\s/g, "")
+      .replace(/[^A-Za-z0-9]/g, "")
+      .toLowerCase();
+
+    if (orderTitle.includes(filter) || orderNumber.includes(filter))
       return true;
-    }
   }
   return false;
 };
+
+const sortOrders = (a, b) => {
+  const priorityDiff = b.priority - a.priority;
+  if (priorityDiff && priorityDiff !== 0) return priorityDiff;
+
+  return Date.parse(a.FileContents[0].ShipDate) -  Date.parse(b.FileContents[0].ShipDate);
+}

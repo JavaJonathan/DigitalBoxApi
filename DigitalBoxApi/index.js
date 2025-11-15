@@ -1,9 +1,11 @@
 const express = require("express");
 const cors = require("cors");
+const multer = require("multer");
 const bodyParser = require("body-parser");
 const AuthorizationHelper = require("./AuthorizationHelper");
 const FileHelper = require("./FileHelper");
 const SearchHelper = require("./SearchHelper");
+const OrderHelper = require("./OrderHelper");
 
 const app = express();
 
@@ -16,6 +18,10 @@ app.use(cors(corsOptions));
 app.use(bodyParser.text({ limit: "500mb" }));
 app.use(bodyParser.raw({ limit: "500mb" }));
 
+const upload = multer({ 
+  dest: "uploads/"
+});
+
 /*Json DB Shape
   {
     Updating: Boolean,
@@ -25,6 +31,16 @@ app.use(bodyParser.raw({ limit: "500mb" }));
     RemovedOrders: Array
   }
 */
+
+app.post("/generateReport", upload.single("file"), (req, res) => {
+  console.log(req.file);      // The CSV file
+  console.log(req.body.token); // The token
+  res.json({ success: true });
+});
+
+app.post("/priority", async (req, res) => {
+  OrderHelper.toggleOrderPriority(JSON.parse(req.body), res);
+});
 
 app.post("/", async (req, res) => {
   FileHelper.GetOrdersFromFile(JSON.parse(req.body), res);
