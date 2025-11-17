@@ -32,10 +32,12 @@ const upload = multer({
   }
 */
 
+app.post("/addNote", async (req, res) => {
+  OrderHelper.addNote(JSON.parse(req.body), res);
+});
+
 app.post("/generateReport", upload.single("file"), (req, res) => {
-  console.log(req.file);      // The CSV file
-  console.log(req.body.token); // The token
-  res.json({ success: true });
+  OrderHelper.generateReport(req, res);
 });
 
 app.post("/priority", async (req, res) => {

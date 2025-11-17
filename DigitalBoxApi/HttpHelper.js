@@ -68,10 +68,10 @@ exports.respondToClient = (response, jsonDB, request, message) => {
 
 exports.respondWithCanceledOrders = (response, orders, request, message) => {
   response.json({
-    Orders: filterOrders(
+    Orders: filterOrderHistory(
       request,
       orders.sort((a, b) => {
-        return sortOrders(a, b)
+        return sortCancelHistory(a, b)
       }),
     ),
     Message: message,
@@ -81,10 +81,10 @@ exports.respondWithCanceledOrders = (response, orders, request, message) => {
 
 exports.respondWithShippedOrders = (response, orders, request, message) => {
   response.json({
-    Orders: filterOrders(
+    Orders: filterOrderHistory(
       request,
       orders.sort((a, b) => {
-        return sortOrders(a, b)
+        return sortShipHistory(a, b)
       }),
     ),
     Message: message,
@@ -93,16 +93,38 @@ exports.respondWithShippedOrders = (response, orders, request, message) => {
 };
 
 const filterOrders = (request, items) => {
-  if (!request.Filter || request.Filter === "") return items;
-
   return items.filter((item) => {
-    return shouldBeFiltered(item, request);
+    if ( request.searchValue && request.searchValue !== "" ) {
+      if( !filterForSearchValue(item, request) ) return false;
+    }
+
+    if ( request.filters.textSearchTypeFilter ) {
+      if( !filterForSearchType(item, request) ) return false;
+    }
+
+    if ( request.filters.marketplaceFilter ) {
+      if( !filterForMarketplace(item, request) ) return false;
+    }
+
+    if ( request.filters.priorityFilter ) {
+      if( !filterForPriority(item, request) ) return false;
+    }
+
+    return true;
   });
 };
 
-const shouldBeFiltered = (item, request) => {
+const filterOrderHistory = (request, items) => {
+  if (!request.searchValue || request.searchValue === "") return items;
+
+  return items.filter((item) => {
+    return filterForSearchValue(item, request);
+  });
+};
+
+const filterForSearchValue = (item, request) => {
   //we needed to remove the spaces due to search results not returning
-  let filter = request.Filter.replace(/\s/g, "")
+  let filter = request.searchValue.replace(/\s/g, "")
     .replace(/[^A-Za-z0-9]/g, "")
     .toLowerCase();
 
@@ -121,9 +143,29 @@ const shouldBeFiltered = (item, request) => {
   return false;
 };
 
+const filterForSearchType = () => {
+  return true;
+}
+
+const filterForMarketplace = () => {
+  return true;
+}
+
+const filterForPriority = () => {
+  return true;
+}
+
 const sortOrders = (a, b) => {
   const priorityDiff = b.priority - a.priority;
   if (priorityDiff && priorityDiff !== 0) return priorityDiff;
 
   return Date.parse(a.FileContents[0].ShipDate) -  Date.parse(b.FileContents[0].ShipDate);
+}
+
+const sortShipHistory = (a, b) => {
+  return Date.parse(b.shippedOn) -  Date.parse(a.shippedOn);
+}
+
+const sortCancelHistory = (a, b) => {
+  return Date.parse(b.canceledOn) -  Date.parse(a.canceledOn);
 }
