@@ -4,6 +4,9 @@ const HttpHelper = require("./HttpHelper");
 const LogHelper = require("./LogHelper");
 const fs = require('fs');
 const csv = require('csv-parser');
+const path = require('path');
+const { Worker } = require('worker_threads');
+const worker = new Worker(path.resolve(__dirname, './InventoryCheckWorker.js'));
 
 exports.toggleOrderPriority = async (request, response) => {
   let googleDrive = {};
@@ -62,15 +65,31 @@ exports.generateReport = async (request, response) => {
   try {
     googleDrive = await AuthorizationHelper.authorizeWithGoogle(token);
     jsonDB = await FileHelper.getJSONFile(googleDrive);
-    readCsv(request.file.path).then(data => {
-      console.log(data);
+    let data = await readCsv(request.file.path);
+
+    fs.rmSync(path.join(__dirname, '/reports'), { recursive: true, force: true });
+    
+    worker.postMessage({
+      lineItems: data,
+      orders: jsonDB.Orders
     });
+
     HttpHelper.respondToClient(response, jsonDB, request, "Priority saved successfully.");
   } catch (error) {
     HttpHelper.respondToClientWithError(response, error);
     LogHelper.LogError(error);
   }
 }
+
+worker.on("message", function (message) {
+  const { results } = message;
+  saveReport(results);
+  console.log("Report Generated successfully!");
+});
+
+worker.on('error', function (error) {
+  console.error("Error generating report: ", error);
+});
 
 const readCsv = (filePath) => {
   return new Promise((resolve, reject) => {
@@ -80,8 +99,27 @@ const readCsv = (filePath) => {
       .pipe(csv())
       .on('data', (row) => results.push(row))
       .on('end', () => resolve(results))
-      .on('error', reject);
-    
-    console.log(results);
+      .on('error', reject);    
   });
+}
+
+const saveReport = (reportList) => {
+  const filePath = path.join(__dirname, '/reports')
+
+  let csvContent = "title\n";
+  for (const item of reportList) {
+    csvContent += `"${item}"\n`;
+  }
+
+  if (!fs.existsSync(filePath)) {
+    fs.mkdirSync(filePath, { recursive: true });
+  }
+
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = d.getMonth() + 1;
+  const day = d.getDate();
+  const BOM = '\uFEFF';
+
+  fs.writeFileSync(path.join(filePath, `DigitalBoxReport${month}-${day}-${year}.csv`), BOM + csvContent, 'utf8');
 }
