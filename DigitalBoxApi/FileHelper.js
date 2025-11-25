@@ -252,6 +252,8 @@ const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {
 };
 
 const updateCancelledOrders = (currentDBState, orders) => {
+  const dateSevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+
   orders = orders.map((order) => {
     return { ...order, canceledOn: new Date().toLocaleString() };
   });
@@ -261,9 +263,18 @@ const updateCancelledOrders = (currentDBState, orders) => {
   } else {
     currentDBState.CancelledOrders.push(...orders);
   }
+
+  let test = currentDBState.CancelledOrders.filter( order => {
+    const cancelDate = new Date(Date.parse(order.canceledOn));
+    return cancelDate > dateSevenDaysAgo
+  })
+
+  console.log(test.length)
 };
 
 const updateShippedOrders = (currentDBState, orders) => {
+  const dateSevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+
   orders = orders.map((order) => {
     return { ...order, shippedOn: new Date().toLocaleString() };
   });
@@ -273,6 +284,13 @@ const updateShippedOrders = (currentDBState, orders) => {
   } else {
     currentDBState.ShippedOrders.push(...orders);
   }
+
+  let test = currentDBState.ShippedOrders.filter( order => {
+    const shipDate = new Date(Date.parse(order.shippedOn));
+    return shipDate > dateSevenDaysAgo
+  })
+
+  console.log(test.length)
 };
 
 const writeToJsonFile = (exports.writeToJsonFile = async (

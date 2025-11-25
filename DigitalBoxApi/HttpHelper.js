@@ -106,8 +106,8 @@ const filterOrders = (request, items) => {
     if ( request.filters.textSearchTypeFilter === "notes" && !filterForNotes(item, request) )
       return false;
 
-    // if ( request.filters.marketplaceFilter && !filterForMarketplace(item, request) )
-    //   return false;
+    if ( request.filters.marketplaceFilter && !filterForMarketplace(item, request) )
+      return false;
 
     if ( request.filters.priorityFilter && !item.priority)
       return false;
@@ -165,8 +165,20 @@ const filterForNotes = (item, request) => {
   )
 }
 
-const filterForMarketplace = () => {
-  return true;
+const filterForMarketplace = (item, request) => {
+  let orderNumber = item.FileContents[0].OrderNumber
+
+  console.log(orderNumber.length)
+  console.log(orderNumber)
+
+  switch(request.filters.marketplaceFilter) {
+    case "all": return true
+    case "shopify": return orderNumber.startsWith("1001")
+    case "ebay": return orderNumber.length == 12 && orderNumber.includes("-")
+    case "amazon": return orderNumber.length == 19 && orderNumber.includes("-")
+    case "walmart": return !orderNumber.includes("-") && !orderNumber.startsWith("1001")
+    default: return false
+  }
 }
 
 const sortOrders = (a, b) => {

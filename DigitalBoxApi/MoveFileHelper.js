@@ -25,13 +25,31 @@ exports.MoveFiles = async (drive, orders, action) => {
   }
 };
 
-exports.MoveFilesBack = async (drive, orders) => {
+exports.UndoShip = async (drive, orders) => {
   for (let index = 0; index < orders.length; index++) {
     await drive.files.update(
       {
         fileId: orders[index],
         addParents: toBeShippedFolder,
         removeParents: shippedFolderId,
+        fields: "id, parents",
+      },
+      function (err, file) {
+        if (err) {
+          throw err;
+        }
+      },
+    );
+  }
+};
+
+exports.UndoCancel = async (drive, orders) => {
+  for (let index = 0; index < orders.length; index++) {
+    await drive.files.update(
+      {
+        fileId: orders[index],
+        addParents: toBeShippedFolder,
+        removeParents: cancelledFolderId,
         fields: "id, parents",
       },
       function (err, file) {

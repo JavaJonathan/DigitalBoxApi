@@ -49,7 +49,7 @@ exports.addNote = async (request, response) => {
     order.note = request.note;
     
     await FileHelper.writeToJsonFile(jsonDB, googleDrive);
-    HttpHelper.respondToClient(response, jsonDB, request, "Priority saved successfully.");
+    HttpHelper.respondToClient(response, jsonDB, request, "Note saved successfully.");
   } catch (error) {
     HttpHelper.respondToClientWithError(response, error);
     LogHelper.LogError(error);
@@ -74,7 +74,7 @@ exports.generateReport = async (request, response) => {
       orders: jsonDB.Orders
     });
 
-    HttpHelper.respondToClient(response, jsonDB, request, "Priority saved successfully.");
+    HttpHelper.respondToClient(response, jsonDB, request, "Generating report.. Once completed, you can refresh the page and click the Paper Icon to download.");
   } catch (error) {
     HttpHelper.respondToClientWithError(response, error);
     LogHelper.LogError(error);
