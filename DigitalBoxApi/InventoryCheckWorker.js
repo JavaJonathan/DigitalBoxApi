@@ -10,30 +10,30 @@
 
 const { parentPort } = require('worker_threads');
 
-parentPort.on("message", function (message) {
-    const { lineItems, orders } = message;
-  
-    const results = [];
+parentPort.on('message', function (message) {
+  const { lineItems, orders } = message;
 
-    const itemMap = new Map();
+  const results = [];
 
-    orders.flatMap(order => order.FileContents).forEach(item => {
-        const currentQty = itemMap.get(item.Title) || 0;
-        itemMap.set(item.Title, currentQty + item.Quantity);
+  const itemMap = new Map();
+
+  orders
+    .flatMap(order => order.FileContents)
+    .forEach(item => {
+      const currentQty = itemMap.get(item.Title) || 0;
+      itemMap.set(item.Title, currentQty + item.Quantity);
     });
 
-    const flattenedOrders = Array.from(itemMap, ([title, quantity]) => ({ title, quantity }));
-  
-    for (const lineItem of lineItems) {
-      for (const order of flattenedOrders) {
-        if (lineItem.sku && order.title.includes(lineItem.sku)) {
-            console.log(lineItem.sku)
-            //This is the property name provided by the customer
-            if(order.quantity + lineItem["26212b ridge rd"] > 0) 
-                results.push( order.title );
-        }
+  const flattenedOrders = Array.from(itemMap, ([title, quantity]) => ({ title, quantity }));
+
+  for (const lineItem of lineItems) {
+    for (const order of flattenedOrders) {
+      if (lineItem.sku && order.title.includes(lineItem.sku)) {
+        //This is the property name provided by the customer
+        if (order.quantity + lineItem['26212b ridge rd'] > 0) results.push(order.title);
       }
     }
-  
-    parentPort.postMessage({ results });
+  }
+
+  parentPort.postMessage({ results });
 });

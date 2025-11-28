@@ -1,24 +1,24 @@
-const AuthorizationHelper = require("./AuthorizationHelper");
-const LogHelper = require("./LogHelper");
-const fs = require("fs");
-const CompareHelper = require("./CompareHelper");
-const ContentHelper = require("./ContentHelper");
-const UploadHelper = require("./UploadHelper");
-const MoveFileHelper = require("./MoveFileHelper");
-const BackupHelper = require("./BackupHelper");
-const HttpHelper = require("./HttpHelper");
+const AuthorizationHelper = require('./AuthorizationHelper');
+const LogHelper = require('./LogHelper');
+const fs = require('fs');
+const CompareHelper = require('./CompareHelper');
+const ContentHelper = require('./ContentHelper');
+const UploadHelper = require('./UploadHelper');
+const MoveFileHelper = require('./MoveFileHelper');
+const BackupHelper = require('./BackupHelper');
+const HttpHelper = require('./HttpHelper');
 
-let jsonFileId = "";
+let jsonFileId = '';
 
-exports.JsonFileId = async (googleDrive) => {
-  if (jsonFileId === "") {
+exports.JsonFileId = async googleDrive => {
+  if (jsonFileId === '') {
     await googleDrive.files
       .list({
         q: "name='orders.json' and trashed=false",
-        fields: "nextPageToken, files(id)",
-        spaces: "drive",
+        fields: 'nextPageToken, files(id)',
+        spaces: 'drive'
       })
-      .then((response) => {
+      .then(response => {
         jsonFileId = response.data.files[0].id;
       });
     return jsonFileId;
@@ -42,11 +42,7 @@ exports.GetOrdersFromFile = async (request, response) => {
     if (jsonDB.Updating === true) {
       message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
     } else {
-      let files = await CompareHelper.CheckForDbUpdates(
-        fileIds,
-        jsonDB,
-        googleDrive,
-      );
+      let files = await CompareHelper.CheckForDbUpdates(fileIds, jsonDB, googleDrive);
       newFiles = files[0];
       removedFiles = files[1];
     }
@@ -90,12 +86,9 @@ exports.CancelOrShipOrders = async (request, response) => {
       response.json({
         Message: `Some of your orders have already been shipped or cancelled.`,
         Orders: jsonDB.Orders.sort((a, b) => {
-          return (
-            Date.parse(a.FileContents[0].ShipDate) -
-            Date.parse(b.FileContents[0].ShipDate)
-          );
+          return Date.parse(a.FileContents[0].ShipDate) - Date.parse(b.FileContents[0].ShipDate);
         }),
-        Token: AuthorizationHelper.authToken,
+        Token: AuthorizationHelper.authToken
       });
 
       return;
@@ -104,27 +97,19 @@ exports.CancelOrShipOrders = async (request, response) => {
     //Theres a bug in the v1 implementation that diff checks the db on every search but when someone is shipping
     //and someone else searches, it sees the temporary diff and adds the file back
     //the v2 implementation will solve that
-    newDBState = removeOrdersFromDB(
-      jsonDB,
-      request.Orders,
-      googleDrive,
-      request.Action,
-    );
+    newDBState = removeOrdersFromDB(jsonDB, request.Orders, googleDrive, request.Action);
     MoveFileHelper.MoveFiles(googleDrive, request.Orders, request.Action);
     BackupHelper.BackupDatabase(googleDrive);
 
-    if (request.Action === "ship") {
-      let returnMessage = await downloadShippedFiles(
-        googleDrive,
-        request.Orders,
-      );
+    if (request.Action === 'ship') {
+      let returnMessage = await downloadShippedFiles(googleDrive, request.Orders);
       HttpHelper.respondToClient(response, newDBState, request, returnMessage);
-    } else if (request.Action === "cancel") {
+    } else if (request.Action === 'cancel') {
       HttpHelper.respondToClient(
         response,
         newDBState,
         request,
-        `${request.Orders.length} order(s) cancelled successfully`,
+        `${request.Orders.length} order(s) cancelled successfully`
       );
     }
   } catch (error) {
@@ -134,16 +119,14 @@ exports.CancelOrShipOrders = async (request, response) => {
   }
 };
 
-const getJSONFile = (exports.getJSONFile = async (googleDrive) => {
+const getJSONFile = (exports.getJSONFile = async googleDrive => {
   let fileId = await exports.JsonFileId(googleDrive);
-  return googleDrive.files
-    .get({ fileId: `${fileId}`, alt: "media" })
-    .then((response) => {
-      return response.data;
-    });
+  return googleDrive.files.get({ fileId: `${fileId}`, alt: 'media' }).then(response => {
+    return response.data;
+  });
 });
 
-const markDBAsNotBeingUpdated = async (googleDrive) => {
+const markDBAsNotBeingUpdated = async googleDrive => {
   let jsonDB = await getJSONFile(googleDrive);
   jsonDB.Updating = false;
   await writeToJsonFile(jsonDB, googleDrive);
@@ -151,8 +134,8 @@ const markDBAsNotBeingUpdated = async (googleDrive) => {
 
 const removeFilesFromDB = (jsonDB, removedFiles) => {
   if (removedFiles.length > 0) {
-    removedFiles.forEach((removedFile) => {
-      jsonDB.Orders = jsonDB.Orders.filter((order) => {
+    removedFiles.forEach(removedFile => {
+      jsonDB.Orders = jsonDB.Orders.filter(order => {
         return order.FileId !== removedFile;
       });
     });
@@ -168,11 +151,7 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive, message) => {
       console.log(`Added ${counter + 1}/${newFiles.length} to the database.`);
       let PDFObject = {};
 
-      await ContentHelper.DownloadFile(
-        googleDrive,
-        newFiles[counter],
-        "photo.pdf",
-      );
+      await ContentHelper.DownloadFile(googleDrive, newFiles[counter], 'photo.pdf');
       PDFObject = await ContentHelper.GetText(newFiles[counter]);
       newOrders.push(PDFObject);
 
@@ -196,7 +175,7 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive, message) => {
   }
 };
 
-const getUpdateFinishTime = (numberOfItems) => {
+const getUpdateFinishTime = numberOfItems => {
   let date = new Date();
   date.setMinutes(date.getMinutes() + Math.ceil(numberOfItems / 60));
   return date.toLocaleString();
@@ -211,19 +190,17 @@ const downloadShippedFiles = async (googleDrive, orders) => {
       await ContentHelper.DownloadFile(
         googleDrive,
         orders[counter],
-        JSON.parse(fs.readFileSync("botConfigs.json")).DownloadFolderPath,
+        JSON.parse(fs.readFileSync('botConfigs.json')).DownloadFolderPath
       );
       downloadedOrders.push(orders[counter]);
     }
   } catch (exception) {
     message =
-      "Some of your files were not downloaded. Please check the api console to see which files failed.";
+      'Some of your files were not downloaded. Please check the api console to see which files failed.';
     console.log(`Unable to download the following files: `);
     orders
-      .filter((order) => !downloadedOrders.includes(order))
-      .forEach((missedOrder) =>
-        console.log(`https://drive.google.com/file/d/${missedOrder}/view`),
-      );
+      .filter(order => !downloadedOrders.includes(order))
+      .forEach(missedOrder => console.log(`https://drive.google.com/file/d/${missedOrder}/view`));
 
     LogHelper.LogError(exception);
   }
@@ -232,17 +209,17 @@ const downloadShippedFiles = async (googleDrive, orders) => {
 };
 
 const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {
-  let newOrders = currentDBState.Orders.filter((record) => {
+  let newOrders = currentDBState.Orders.filter(record => {
     return !orders.includes(record.FileId);
   });
 
-  let removedOrders = currentDBState.Orders.filter((record) => {
+  let removedOrders = currentDBState.Orders.filter(record => {
     return orders.includes(record.FileId);
   });
 
-  if (action === "cancel") {
+  if (action === 'cancel') {
     updateCancelledOrders(currentDBState, removedOrders);
-  } else if (action === "ship") {
+  } else if (action === 'ship') {
     updateShippedOrders(currentDBState, removedOrders);
   }
 
@@ -252,9 +229,9 @@ const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {
 };
 
 const updateCancelledOrders = (currentDBState, orders) => {
-  const dateSevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+  const dateSevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 
-  orders = orders.map((order) => {
+  orders = orders.map(order => {
     return { ...order, canceledOn: new Date().toLocaleString() };
   });
 
@@ -264,18 +241,16 @@ const updateCancelledOrders = (currentDBState, orders) => {
     currentDBState.CancelledOrders.push(...orders);
   }
 
-  let test = currentDBState.CancelledOrders.filter( order => {
+  let test = currentDBState.CancelledOrders.filter(order => {
     const cancelDate = new Date(Date.parse(order.canceledOn));
-    return cancelDate > dateSevenDaysAgo
-  })
-
-  console.log(test.length)
+    return cancelDate > dateSevenDaysAgo;
+  });
 };
 
 const updateShippedOrders = (currentDBState, orders) => {
-  const dateSevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
+  const dateSevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
 
-  orders = orders.map((order) => {
+  orders = orders.map(order => {
     return { ...order, shippedOn: new Date().toLocaleString() };
   });
 
@@ -285,19 +260,16 @@ const updateShippedOrders = (currentDBState, orders) => {
     currentDBState.ShippedOrders.push(...orders);
   }
 
-  let test = currentDBState.ShippedOrders.filter( order => {
+  let test = currentDBState.ShippedOrders.filter(order => {
     const shipDate = new Date(Date.parse(order.shippedOn));
-    return shipDate > dateSevenDaysAgo
-  })
+    return shipDate > dateSevenDaysAgo;
+  });
 
-  console.log(test.length)
+  console.log(test.length);
 };
 
-const writeToJsonFile = (exports.writeToJsonFile = async (
-  jsonString,
-  googleDrive,
-) => {
-  fs.writeFileSync("orders.json", JSON.stringify(jsonString));
+const writeToJsonFile = (exports.writeToJsonFile = async (jsonString, googleDrive) => {
+  fs.writeFileSync('orders.json', JSON.stringify(jsonString));
   return UploadHelper.UpdateJsonFile(googleDrive);
 });
 
@@ -309,15 +281,15 @@ const getPdfFiles = async (googleDrive, fileIds) => {
     while (fetch) {
       await googleDrive.files
         .list({
-          q: "'1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU' in parents and trashed=false", //toBeShippedFolder
-          fields: "nextPageToken, files(id, parents)",
-          spaces: "drive",
+          q: "'1_-sgosO7Pyq5b5ofxrD7z1Bb5uck8q8Z' in parents and trashed=false", //toBeShippedFolder
+          fields: 'nextPageToken, files(id, parents)',
+          spaces: 'drive',
           pageToken: pageToken,
-          pageSize: 1000,
+          pageSize: 1000
         })
-        .then((response) => {
+        .then(response => {
           response.data.files.forEach(function (file) {
-            if (file.parents[0] === "1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU") {
+            if (file.parents[0] === '1_-sgosO7Pyq5b5ofxrD7z1Bb5uck8q8Z') {
               fileIds.push(file.id);
             }
           });
@@ -325,10 +297,10 @@ const getPdfFiles = async (googleDrive, fileIds) => {
 
           if (!pageToken) {
             fetch = false;
-            resolve("Completed");
+            resolve('Completed');
           }
         })
-        .catch((error) => {
+        .catch(error => {
           console.log("Unable to retrive PDF's.");
           LogHelper.LogError(error);
           fetch = false;
