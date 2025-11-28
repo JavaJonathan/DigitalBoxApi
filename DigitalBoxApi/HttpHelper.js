@@ -94,7 +94,7 @@ exports.respondWithShippedOrders = (response, orders, request, message) => {
 
 const filterOrders = (request, items) => {
 
-  if(( !request.searchValue || request.searchValue === "" ) &&  !request.filters)
+  if(( !request.searchValue || request.searchValue === "" ) && !request.filters)
     return items;
 
   return items.filter((item) => {

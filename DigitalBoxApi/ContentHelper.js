@@ -45,7 +45,7 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
           .pipe(dest);
       })
       .catch((error) => {
-        console.log('Error downloading file.')
+        console.log("Error downloading file.");
         LogHelper.LogError(error);
         reject(error);
       });

@@ -7,7 +7,7 @@ exports.CheckForDbUpdates = async (fileIds, jsonDB, googleDrive) => {
   let jsonFileId = await FileHelper.JsonFileId(googleDrive);
 
   //sometimes the fileId fetch can fail, so if the fileId array is empty we just want to return
-  if(fileIds.length < 1) return [ [], [] ]
+  if (fileIds.length < 1) return [[], []];
 
   createFileIdDictionary(jsonDB.Orders, fileIdDictionary);
   fileIds.forEach((fileId) => {
