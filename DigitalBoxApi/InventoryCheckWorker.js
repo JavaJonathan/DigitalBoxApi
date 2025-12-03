@@ -30,7 +30,7 @@ parentPort.on('message', function (message) {
     for (const order of flattenedOrders) {
       if (lineItem.sku && order.title.includes(lineItem.sku)) {
         //This is the property name provided by the customer
-        if (order.quantity + lineItem['26212b ridge rd'] > 0) results.push(order.title);
+        if (( order.quantity + lineItem['26212b ridge rd'] ) > 0) results.push(order.title);
       }
     }
   }
