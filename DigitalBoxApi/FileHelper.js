@@ -9,6 +9,7 @@ const BackupHelper = require('./BackupHelper');
 const HttpHelper = require('./HttpHelper');
 
 let jsonFileId = '';
+let jsonUndoHistoryFileId = '';
 
 exports.JsonFileId = async googleDrive => {
   if (jsonFileId === '') {
@@ -25,6 +26,21 @@ exports.JsonFileId = async googleDrive => {
   } else return jsonFileId;
 };
 
+exports.JsonUndoHistoryFileId = async googleDrive => {
+  if (jsonUndoHistoryFileId === '') {
+    await googleDrive.files
+      .list({
+        q: "name='UndoHistory.json' and trashed=false",
+        fields: 'nextPageToken, files(id)',
+        spaces: 'drive'
+      })
+      .then(response => {
+        jsonUndoHistoryFileId = response.data.files[0].id;
+      });
+    return jsonUndoHistoryFileId;
+  } else return jsonUndoHistoryFileId;
+};
+
 exports.GetOrdersFromFile = async (request, response) => {
   let fileIds = [];
   let jsonDB = {};
@@ -35,7 +51,7 @@ exports.GetOrdersFromFile = async (request, response) => {
   let currentUserTriggeredDBUpdate = false;
 
   try {
-    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
+    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.code);
     await getPdfFiles(googleDrive, fileIds);
     jsonDB = await getJSONFile(googleDrive);
 
@@ -76,7 +92,7 @@ exports.CancelOrShipOrders = async (request, response) => {
   let jsonDB = {};
   let newDBState = {};
   try {
-    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
+    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.code);
     jsonDB = await getJSONFile(googleDrive);
 
     //we need to ensure the files hasn't already been moved causing further issues
@@ -125,6 +141,13 @@ const getJSONFile = (exports.getJSONFile = async googleDrive => {
     return response.data;
   });
 });
+
+exports.getUndoHistoryFile = async googleDrive => {
+  let fileId = await exports.JsonUndoHistoryFileId(googleDrive);
+  return googleDrive.files.get({ fileId: `${fileId}`, alt: 'media' }).then(response => {
+    return response.data;
+  });
+};
 
 const markDBAsNotBeingUpdated = async googleDrive => {
   let jsonDB = await getJSONFile(googleDrive);
@@ -241,7 +264,7 @@ const updateCancelledOrders = (currentDBState, orders) => {
     currentDBState.CancelledOrders.push(...orders);
   }
 
-  let test = currentDBState.CancelledOrders.filter(order => {
+  currentDBState.CancelledOrders = currentDBState.CancelledOrders.filter(order => {
     const cancelDate = new Date(Date.parse(order.canceledOn));
     return cancelDate > dateSevenDaysAgo;
   });
@@ -260,12 +283,10 @@ const updateShippedOrders = (currentDBState, orders) => {
     currentDBState.ShippedOrders.push(...orders);
   }
 
-  let test = currentDBState.ShippedOrders.filter(order => {
+  currentDBState.ShippedOrders = currentDBState.ShippedOrders.filter(order => {
     const shipDate = new Date(Date.parse(order.shippedOn));
     return shipDate > dateSevenDaysAgo;
   });
-
-  console.log(test.length);
 };
 
 const writeToJsonFile = (exports.writeToJsonFile = async (jsonString, googleDrive) => {

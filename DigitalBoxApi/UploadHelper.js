@@ -37,3 +37,42 @@ exports.UpdateJsonFile = async drive => {
     throw error;
   });
 };
+
+exports.UpdateUndoHistoryFile = async drive => {
+  var jsonUndoHistoryFileId = await FileHelper.JsonUndoHistoryFileId(drive);
+
+  if(!jsonUndoHistoryFileId) throw 'Could not locate UndoHistory.json'
+
+  var fileMetadata = {
+    name: 'UndoHistory.json'
+  };
+
+  var media = {
+    mimeType: 'text/plain',
+    body: fs.createReadStream('UndoHistory.json')
+  };
+
+  return new Promise((resolve, reject) => {
+    drive.files.update(
+      {
+        fileId: `${jsonUndoHistoryFileId}`,
+        resource: fileMetadata,
+        media: media,
+        fields: 'id'
+      },
+      function (err, file) {
+        if (err) {
+          console.log('Error updating undo history json file.');
+          LogHelper.LogError(err);
+          reject(err);
+        } else {
+          resolve(console.log('Undo History Json File Updated.'));
+        }
+      }
+    );
+  }).catch(error => {
+    console.log('Error updating undo history json file.');
+    LogHelper.LogError(error);
+    throw error;
+  });
+};

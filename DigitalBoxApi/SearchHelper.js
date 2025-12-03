@@ -6,7 +6,7 @@ const AuthorizationHelper = require('./AuthorizationHelper');
 exports.SearchOrders = async (request, response) => {
   let message = 'Search results returned successfully!';
   try {
-    let googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
+    let googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.code);
     let jsonDB = await FileHelper.getJSONFile(googleDrive);
 
     if (jsonDB.Updating === true) {
@@ -28,7 +28,7 @@ exports.SearchOrders = async (request, response) => {
 
 exports.CanceledOrders = async (request, response) => {
   try {
-    let googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
+    let googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.code);
     let jsonDB = await FileHelper.getJSONFile(googleDrive);
 
     //we need to filter out all saved shipped orders that do not match the new json object design
@@ -48,7 +48,7 @@ exports.CanceledOrders = async (request, response) => {
 
 exports.ShippedOrders = async (request, response) => {
   try {
-    let googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
+    let googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.code);
     let jsonDB = await FileHelper.getJSONFile(googleDrive);
 
     //we need to filter out all saved shipped orders that do not match the new json object design

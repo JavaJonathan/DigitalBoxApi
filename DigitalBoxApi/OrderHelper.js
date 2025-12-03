@@ -2,6 +2,7 @@ const AuthorizationHelper = require('./AuthorizationHelper');
 const FileHelper = require('./FileHelper');
 const HttpHelper = require('./HttpHelper');
 const LogHelper = require('./LogHelper');
+const UploadHelper = require('./UploadHelper');
 const fs = require('fs');
 const csv = require('csv-parser');
 const path = require('path');
@@ -14,7 +15,7 @@ exports.undoShippedOrder = async (request, response) => {
   let jsonDB = {};
 
   try {
-    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
+    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.code);
     jsonDB = await FileHelper.getJSONFile(googleDrive);
     let order = jsonDB.ShippedOrders.find(order => order.FileId === request.FileId);
 
@@ -24,12 +25,14 @@ exports.undoShippedOrder = async (request, response) => {
       Checked: false
     };
 
-    jsonDB = await FileHelper.getJSONFile(googleDrive);
     jsonDB.Orders.push(transformedOrder);
     jsonDB.ShippedOrders = jsonDB.ShippedOrders.filter(order => order.FileId !== request.FileId);
 
-    await FileHelper.writeToJsonFile(jsonDB, googleDrive);
-    await UndoShip(googleDrive, [order.FileId]);
+    await Promise.all([
+      FileHelper.writeToJsonFile(jsonDB, googleDrive),
+      UndoShip(googleDrive, [order.FileId]),
+      UpdateUndoHistory(googleDrive, { name: request.name, orderNumber: order.FileContents[0].OrderNumber})
+    ]);
 
     //we need to filter out all saved shipped orders that do not match the new json object design
     let orders = jsonDB.ShippedOrders.filter(order => order.FileContents !== undefined);
@@ -46,13 +49,9 @@ exports.undoCanceledOrder = async (request, response) => {
   let jsonDB = {};
 
   try {
-    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
+    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.code);
     jsonDB = await FileHelper.getJSONFile(googleDrive);
     let order = jsonDB.CancelledOrders.find(order => order.FileId === request.FileId);
-
-    console.log(jsonDB.Orders[0]);
-
-    console.log(order);
 
     let transformedOrder = {
       FileId: order.FileId,
@@ -60,16 +59,16 @@ exports.undoCanceledOrder = async (request, response) => {
       Checked: false
     };
 
-    console.log(transformedOrder);
-
-    jsonDB = await FileHelper.getJSONFile(googleDrive);
     jsonDB.Orders.push(transformedOrder);
     jsonDB.CancelledOrders = jsonDB.CancelledOrders.filter(
       order => order.FileId !== request.FileId
     );
 
-    await UndoCancel(googleDrive, [order.FileId]);
-    await FileHelper.writeToJsonFile(jsonDB, googleDrive);
+    await Promise.all([
+      UndoCancel(googleDrive, [order.FileId]),
+      FileHelper.writeToJsonFile(jsonDB, googleDrive),
+      UpdateUndoHistory(googleDrive, { name: request.name, orderNumber: order.FileContents[0].OrderNumber})
+    ])
 
     //we need to filter out all saved shipped orders that do not match the new json object design
     let orders = jsonDB.CancelledOrders.filter(order => order.FileContents !== undefined);
@@ -86,7 +85,7 @@ exports.toggleOrderPriority = async (request, response) => {
   let jsonDB = {};
 
   try {
-    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
+    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.code);
     jsonDB = await FileHelper.getJSONFile(googleDrive);
     let order = jsonDB.Orders.find(order => order.FileId === request.FileId);
 
@@ -110,7 +109,7 @@ exports.addNote = async (request, response) => {
   let jsonDB = {};
 
   try {
-    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
+    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.code);
     jsonDB = await FileHelper.getJSONFile(googleDrive);
     let order = jsonDB.Orders.find(order => order.FileId === request.FileId);
 
@@ -133,10 +132,10 @@ exports.generateReport = async (request, response) => {
   let googleDrive = {};
   let jsonDB = {};
 
-  let token = JSON.parse(request.body.token);
+  let code = JSON.parse(request.body.code);
 
   try {
-    googleDrive = await AuthorizationHelper.authorizeWithGoogle(token);
+    googleDrive = await AuthorizationHelper.authorizeWithGoogle(code);
     jsonDB = await FileHelper.getJSONFile(googleDrive);
     let data = await readCsv(request.file.path);
 
@@ -168,6 +167,18 @@ worker.on('message', function (message) {
 worker.on('error', function (error) {
   console.error('Error generating report: ', error);
 });
+
+const UpdateUndoHistory = async (drive, undoDetails) => { 
+  const jsonDB = await FileHelper.getUndoHistoryFile(drive)
+  let jsonObject = jsonDB
+
+  if(!jsonObject) jsonObject = [undoDetails]
+  else {
+    jsonObject = [...jsonDB, undoDetails]
+  }
+  fs.writeFileSync('UndoHistory.json', JSON.stringify(jsonObject));
+  await UploadHelper.UpdateUndoHistoryFile(drive)
+}
 
 const readCsv = filePath => {
   return new Promise((resolve, reject) => {
