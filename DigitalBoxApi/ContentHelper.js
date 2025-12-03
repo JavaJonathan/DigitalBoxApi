@@ -1,6 +1,6 @@
-const fs = require("fs");
-const { PdfReader } = require("pdfreader");
-const LogHelper = require("./LogHelper");
+const fs = require('fs');
+const { PdfReader } = require('pdfreader');
+const LogHelper = require('./LogHelper');
 
 exports.DownloadFile = async (drive, fileIdParam, filePath) => {
   let progress = 0;
@@ -9,9 +9,9 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
     fs.mkdirSync(filePath);
   }
 
-  let dest = "";
+  let dest = '';
 
-  if (filePath === "photo.pdf") {
+  if (filePath === 'photo.pdf') {
     dest = fs.createWriteStream(filePath);
   } else {
     dest = fs.createWriteStream(`${filePath}\\${fileIdParam}.pdf`);
@@ -19,22 +19,19 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
 
   return new Promise((resolve, reject) => {
     drive.files
-      .get(
-        { fileId: `${fileIdParam}`, alt: "media" },
-        { responseType: "stream" },
-      )
-      .then((res) => {
+      .get({ fileId: `${fileIdParam}`, alt: 'media' }, { responseType: 'stream' })
+      .then(res => {
         res.data
-          .on("end", () => {
+          .on('end', () => {
             resolve(() => {
-              console.log("Done downloading file.");
+              console.log('Done downloading file.');
               res.data.end();
             });
           })
-          .on("error", (err) => {
-            reject(console.error("Error downloading file."));
+          .on('error', err => {
+            reject(console.error('Error downloading file.'));
           })
-          .on("data", (d) => {
+          .on('data', d => {
             progress += d.length;
             if (process.stdout.isTTY) {
               process.stdout.clearLine();
@@ -44,8 +41,8 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
           })
           .pipe(dest);
       })
-      .catch((error) => {
-        console.log('Error downloading file.')
+      .catch(error => {
+        console.log('Error downloading file.');
         LogHelper.LogError(error);
         reject(error);
       });
@@ -54,54 +51,51 @@ exports.DownloadFile = async (drive, fileIdParam, filePath) => {
 
 const getNewPDFItem = () => {
   return {
-    Title: "",
-    OrderNumber: "",
-    Quantity: "",
-    ShipDate: "",
+    Title: '',
+    OrderNumber: '',
+    Quantity: '',
+    ShipDate: ''
   };
 };
 
-const IsCharADash = (item) => item && item.R[0].T.toString() === "%C2%AD";
-const IsShipDate = (item) =>
-  item && item.R[0].T.toString() === "Ship%C2%A0Date";
-const shouldIgnore = (item) =>
-  (item && item.R[0].T.toString() === "Description%C2%A0") ||
-  item.text === "Price" ||
-  item.text === "Qty";
-const isOrderNumber = (item) =>
-  item && item.R[0].T.toString() === "Order%C2%A0%23";
-const foundPriceContent = (item) => item && item.text.toString().includes("$");
+const IsCharADash = item => item && item.R[0].T.toString() === '%C2%AD';
+const IsShipDate = item => item && item.R[0].T.toString() === 'Ship%C2%A0Date';
+const shouldIgnore = item =>
+  (item && item.R[0].T.toString() === 'Description%C2%A0') ||
+  item.text === 'Price' ||
+  item.text === 'Qty';
+const isOrderNumber = item => item && item.R[0].T.toString() === 'Order%C2%A0%23';
+const foundPriceContent = item => item && item.text.toString().includes('$');
 
 /*HACK ALERT! I had to leverage a suboptimal api in order to read from a PDF, so this entire function is a hack to get it to do what I need*/
-exports.GetText = async (fileId) => {
-  let orderNumber = "";
-  let shipDate = "";
+exports.GetText = async fileId => {
+  let orderNumber = '';
+  let shipDate = '';
   let startTitle = false;
   let startOrderNumber = false;
-  let previousItem = "";
+  let previousItem = '';
   let startTitleOnNextIteration = false;
   let itemArray = [];
 
   let pdfItem = getNewPDFItem();
 
   return new Promise((resolve, reject) => {
-    new PdfReader().parseFileItems("photo.pdf", (err, item) => {
-      if (err) reject(console.error("error:", err));
+    new PdfReader().parseFileItems('photo.pdf', (err, item) => {
+      if (err) reject(console.error('error:', err));
       else if (!item) {
         if (itemArray.length === 0) {
           itemArray.push({
-            Title:
-              "Unable to read PDF. Please ship item, then reupload a clearer version.",
-            OrderNumber: "N/A",
-            Quantity: "0",
-            ShipDate: "1/1/0001",
+            Title: 'Unable to read PDF. Please ship item, then reupload a clearer version.',
+            OrderNumber: 'N/A',
+            Quantity: '0',
+            ShipDate: '1/1/0001'
           });
         }
 
         resolve({
           FileId: fileId,
           FileContents: itemArray,
-          Checked: false,
+          Checked: false
         });
       } else if (item.text) {
         //we need this here because each item after the first item starts with the title
@@ -110,7 +104,7 @@ exports.GetText = async (fileId) => {
           startTitle = true;
         }
         //start title
-        else if (previousItem && previousItem.text === "Qty") startTitle = true;
+        else if (previousItem && previousItem.text === 'Qty') startTitle = true;
         else if (IsShipDate(previousItem)) {
           //start ship date
           pdfItem.ShipDate = item.text;
@@ -135,13 +129,13 @@ exports.GetText = async (fileId) => {
 
         if (startTitle) {
           //these are dashes that cannot render, they need to be replaced
-          if (IsCharADash(item)) pdfItem.Title += "-";
+          if (IsCharADash(item)) pdfItem.Title += '-';
           //new pages cause issues with the algo, so this is if we encounter a new page and find these value we do nothing
           else if (shouldIgnore(item)) {
           } else pdfItem.Title += item.text;
         } else if (startOrderNumber) {
           //these are dashes that cannot render, they need to be replaced
-          if (IsCharADash(item)) pdfItem.OrderNumber += "-";
+          if (IsCharADash(item)) pdfItem.OrderNumber += '-';
           else pdfItem.OrderNumber += item.text;
         }
         previousItem = item;

@@ -1,29 +1,44 @@
-const AuthorizationHelper = require("./AuthorizationHelper");
-const LogHelper = require("./LogHelper");
-const fs = require("fs");
-const CompareHelper = require("./CompareHelper");
-const ContentHelper = require("./ContentHelper");
-const UploadHelper = require("./UploadHelper");
-const MoveFileHelper = require("./MoveFileHelper");
-const BackupHelper = require("./BackupHelper");
-const HttpHelper = require("./HttpHelper");
+const AuthorizationHelper = require('./AuthorizationHelper');
+const LogHelper = require('./LogHelper');
+const fs = require('fs');
+const CompareHelper = require('./CompareHelper');
+const ContentHelper = require('./ContentHelper');
+const UploadHelper = require('./UploadHelper');
+const MoveFileHelper = require('./MoveFileHelper');
+const BackupHelper = require('./BackupHelper');
+const HttpHelper = require('./HttpHelper');
 
-let jsonFileId = "";
+let jsonFileId = '';
+let jsonUndoHistoryFileId = '';
 
-exports.JsonFileId = async (googleDrive) => {
-  if(jsonFileId === "") {
+exports.JsonFileId = async googleDrive => {
+  if (jsonFileId === '') {
     await googleDrive.files
-    .list({
-      q: "name='orders.json' and trashed=false",
-      fields: "nextPageToken, files(id)",
-      spaces: "drive",
-    })
-    .then((response) => {
-      jsonFileId = response.data.files[0].id;
-    });
+      .list({
+        q: "name='orders.json' and trashed=false",
+        fields: 'nextPageToken, files(id)',
+        spaces: 'drive'
+      })
+      .then(response => {
+        jsonFileId = response.data.files[0].id;
+      });
     return jsonFileId;
-  } 
-  else return jsonFileId;
+  } else return jsonFileId;
+};
+
+exports.JsonUndoHistoryFileId = async googleDrive => {
+  if (jsonUndoHistoryFileId === '') {
+    await googleDrive.files
+      .list({
+        q: "name='UndoHistory.json' and trashed=false",
+        fields: 'nextPageToken, files(id)',
+        spaces: 'drive'
+      })
+      .then(response => {
+        jsonUndoHistoryFileId = response.data.files[0].id;
+      });
+    return jsonUndoHistoryFileId;
+  } else return jsonUndoHistoryFileId;
 };
 
 exports.GetOrdersFromFile = async (request, response) => {
@@ -36,18 +51,14 @@ exports.GetOrdersFromFile = async (request, response) => {
   let currentUserTriggeredDBUpdate = false;
 
   try {
-    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
+    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.code);
     await getPdfFiles(googleDrive, fileIds);
     jsonDB = await getJSONFile(googleDrive);
 
     if (jsonDB.Updating === true) {
       message = `Your search is missing some new orders. It should be updated at approximately ${jsonDB.UpdateFinishTime}.`;
     } else {
-      let files = await CompareHelper.CheckForDbUpdates(
-        fileIds,
-        jsonDB,
-        googleDrive,
-      );
+      let files = await CompareHelper.CheckForDbUpdates(fileIds, jsonDB, googleDrive);
       newFiles = files[0];
       removedFiles = files[1];
     }
@@ -81,7 +92,7 @@ exports.CancelOrShipOrders = async (request, response) => {
   let jsonDB = {};
   let newDBState = {};
   try {
-    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.token);
+    googleDrive = await AuthorizationHelper.authorizeWithGoogle(request.code);
     jsonDB = await getJSONFile(googleDrive);
 
     //we need to ensure the files hasn't already been moved causing further issues
@@ -91,12 +102,9 @@ exports.CancelOrShipOrders = async (request, response) => {
       response.json({
         Message: `Some of your orders have already been shipped or cancelled.`,
         Orders: jsonDB.Orders.sort((a, b) => {
-          return (
-            Date.parse(a.FileContents[0].ShipDate) -
-            Date.parse(b.FileContents[0].ShipDate)
-          );
+          return Date.parse(a.FileContents[0].ShipDate) - Date.parse(b.FileContents[0].ShipDate);
         }),
-        Token: AuthorizationHelper.authToken,
+        Token: AuthorizationHelper.authToken
       });
 
       return;
@@ -105,29 +113,19 @@ exports.CancelOrShipOrders = async (request, response) => {
     //Theres a bug in the v1 implementation that diff checks the db on every search but when someone is shipping
     //and someone else searches, it sees the temporary diff and adds the file back
     //the v2 implementation will solve that
-    newDBState = removeOrdersFromDB(
-      jsonDB,
-      request.Orders,
-      googleDrive,
-      request.Action,
-    );
+    newDBState = removeOrdersFromDB(jsonDB, request.Orders, googleDrive, request.Action);
     MoveFileHelper.MoveFiles(googleDrive, request.Orders, request.Action);
     BackupHelper.BackupDatabase(googleDrive);
 
-    if (request.Action === "ship") {
+    if (request.Action === 'ship') {
       let returnMessage = await downloadShippedFiles(googleDrive, request.Orders);
+      HttpHelper.respondToClient(response, newDBState, request, returnMessage);
+    } else if (request.Action === 'cancel') {
       HttpHelper.respondToClient(
         response,
         newDBState,
         request,
-        returnMessage,
-      );
-    } else if (request.Action === "cancel") {
-      HttpHelper.respondToClient(
-        response,
-        newDBState,
-        request,
-        `${request.Orders.length} order(s) cancelled successfully`,
+        `${request.Orders.length} order(s) cancelled successfully`
       );
     }
   } catch (error) {
@@ -137,16 +135,21 @@ exports.CancelOrShipOrders = async (request, response) => {
   }
 };
 
-const getJSONFile = (exports.getJSONFile = async (googleDrive) => {
+const getJSONFile = (exports.getJSONFile = async googleDrive => {
   let fileId = await exports.JsonFileId(googleDrive);
-  return googleDrive.files
-    .get({ fileId: `${fileId}`, alt: "media" })
-    .then((response) => {
-      return response.data;
-    });
+  return googleDrive.files.get({ fileId: `${fileId}`, alt: 'media' }).then(response => {
+    return response.data;
+  });
 });
 
-const markDBAsNotBeingUpdated = async (googleDrive) => {
+exports.getUndoHistoryFile = async googleDrive => {
+  let fileId = await exports.JsonUndoHistoryFileId(googleDrive);
+  return googleDrive.files.get({ fileId: `${fileId}`, alt: 'media' }).then(response => {
+    return response.data;
+  });
+};
+
+const markDBAsNotBeingUpdated = async googleDrive => {
   let jsonDB = await getJSONFile(googleDrive);
   jsonDB.Updating = false;
   await writeToJsonFile(jsonDB, googleDrive);
@@ -154,8 +157,8 @@ const markDBAsNotBeingUpdated = async (googleDrive) => {
 
 const removeFilesFromDB = (jsonDB, removedFiles) => {
   if (removedFiles.length > 0) {
-    removedFiles.forEach((removedFile) => {
-      jsonDB.Orders = jsonDB.Orders.filter((order) => {
+    removedFiles.forEach(removedFile => {
+      jsonDB.Orders = jsonDB.Orders.filter(order => {
         return order.FileId !== removedFile;
       });
     });
@@ -171,16 +174,12 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive, message) => {
       console.log(`Added ${counter + 1}/${newFiles.length} to the database.`);
       let PDFObject = {};
 
-      await ContentHelper.DownloadFile(
-        googleDrive,
-        newFiles[counter],
-        "photo.pdf",
-      );
+      await ContentHelper.DownloadFile(googleDrive, newFiles[counter], 'photo.pdf');
       PDFObject = await ContentHelper.GetText(newFiles[counter]);
       newOrders.push(PDFObject);
 
       //we need to ensure this code block does not run if it's the last batch of files so the updating value gets set to false
-      if (newOrders.length > 10 && ( newFiles.length - ( counter + 1 ) ) !== 0) {
+      if (newOrders.length > 10 && newFiles.length - (counter + 1) !== 0) {
         jsonDB = await getJSONFile(googleDrive);
         jsonDB.Orders.push(...newOrders);
         await writeToJsonFile(jsonDB, googleDrive);
@@ -199,7 +198,7 @@ const updateDBWithNewItems = async (newFiles, jsonDB, googleDrive, message) => {
   }
 };
 
-const getUpdateFinishTime = (numberOfItems) => {
+const getUpdateFinishTime = numberOfItems => {
   let date = new Date();
   date.setMinutes(date.getMinutes() + Math.ceil(numberOfItems / 60));
   return date.toLocaleString();
@@ -214,16 +213,17 @@ const downloadShippedFiles = async (googleDrive, orders) => {
       await ContentHelper.DownloadFile(
         googleDrive,
         orders[counter],
-        JSON.parse(fs.readFileSync("botConfigs.json")).DownloadFolderPath,
+        JSON.parse(fs.readFileSync('botConfigs.json')).DownloadFolderPath
       );
       downloadedOrders.push(orders[counter]);
     }
   } catch (exception) {
-    message = "Some of your files were not downloaded. Please check the api console to see which files failed."
+    message =
+      'Some of your files were not downloaded. Please check the api console to see which files failed.';
     console.log(`Unable to download the following files: `);
     orders
-      .filter((order) => !downloadedOrders.includes(order))
-      .forEach((missedOrder) => console.log(`https://drive.google.com/file/d/${missedOrder}/view`));
+      .filter(order => !downloadedOrders.includes(order))
+      .forEach(missedOrder => console.log(`https://drive.google.com/file/d/${missedOrder}/view`));
 
     LogHelper.LogError(exception);
   }
@@ -232,17 +232,17 @@ const downloadShippedFiles = async (googleDrive, orders) => {
 };
 
 const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {
-  let newOrders = currentDBState.Orders.filter((record) => {
+  let newOrders = currentDBState.Orders.filter(record => {
     return !orders.includes(record.FileId);
   });
 
-  let removedOrders = currentDBState.Orders.filter((record) => {
+  let removedOrders = currentDBState.Orders.filter(record => {
     return orders.includes(record.FileId);
   });
 
-  if (action === "cancel") {
+  if (action === 'cancel') {
     updateCancelledOrders(currentDBState, removedOrders);
-  } else if (action === "ship") {
+  } else if (action === 'ship') {
     updateShippedOrders(currentDBState, removedOrders);
   }
 
@@ -252,7 +252,9 @@ const removeOrdersFromDB = (currentDBState, orders, googleDrive, action) => {
 };
 
 const updateCancelledOrders = (currentDBState, orders) => {
-  orders = orders.map((order) => {
+  const dateSevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+  orders = orders.map(order => {
     return { ...order, canceledOn: new Date().toLocaleString() };
   });
 
@@ -261,10 +263,17 @@ const updateCancelledOrders = (currentDBState, orders) => {
   } else {
     currentDBState.CancelledOrders.push(...orders);
   }
+
+  currentDBState.CancelledOrders = currentDBState.CancelledOrders.filter(order => {
+    const cancelDate = new Date(Date.parse(order.canceledOn));
+    return cancelDate > dateSevenDaysAgo;
+  });
 };
 
 const updateShippedOrders = (currentDBState, orders) => {
-  orders = orders.map((order) => {
+  const dateSevenDaysAgo = Date.now() - 7 * 24 * 60 * 60 * 1000;
+
+  orders = orders.map(order => {
     return { ...order, shippedOn: new Date().toLocaleString() };
   });
 
@@ -273,12 +282,17 @@ const updateShippedOrders = (currentDBState, orders) => {
   } else {
     currentDBState.ShippedOrders.push(...orders);
   }
+
+  currentDBState.ShippedOrders = currentDBState.ShippedOrders.filter(order => {
+    const shipDate = new Date(Date.parse(order.shippedOn));
+    return shipDate > dateSevenDaysAgo;
+  });
 };
 
-const writeToJsonFile = async (jsonString, googleDrive) => {
-  fs.writeFileSync("orders.json", JSON.stringify(jsonString));
+const writeToJsonFile = (exports.writeToJsonFile = async (jsonString, googleDrive) => {
+  fs.writeFileSync('orders.json', JSON.stringify(jsonString));
   return UploadHelper.UpdateJsonFile(googleDrive);
-};
+});
 
 const getPdfFiles = async (googleDrive, fileIds) => {
   let pageToken = null;
@@ -288,29 +302,27 @@ const getPdfFiles = async (googleDrive, fileIds) => {
     while (fetch) {
       await googleDrive.files
         .list({
-          q: "'1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU' in parents and trashed=false", //toBeShippedFolder
-          fields: "nextPageToken, files(id, parents)",
-          spaces: "drive",
+          q: "'1_-sgosO7Pyq5b5ofxrD7z1Bb5uck8q8Z' in parents and trashed=false", //toBeShippedFolder
+          fields: 'nextPageToken, files(id, parents)',
+          spaces: 'drive',
           pageToken: pageToken,
-          pageSize: 1000,
+          pageSize: 1000
         })
-        .then((response) => {
+        .then(response => {
           response.data.files.forEach(function (file) {
-
-            if(file.parents[0] === '1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU') {
-              fileIds.push(file.id);            
+            if (file.parents[0] === '1_-sgosO7Pyq5b5ofxrD7z1Bb5uck8q8Z') {
+              fileIds.push(file.id);
             }
-
           });
           pageToken = response.data.nextPageToken;
 
           if (!pageToken) {
             fetch = false;
-            resolve("Completed");
+            resolve('Completed');
           }
         })
-        .catch((error) => {
-          console.log('Unable to retrive PDF\'s.');
+        .catch(error => {
+          console.log("Unable to retrive PDF's.");
           LogHelper.LogError(error);
           fetch = false;
           reject(error);
