@@ -20,7 +20,6 @@ exports.SearchOrders = async (request, response) => {
       message // TO DO: Get the message from the file helper so you always know when the last time the db was updated
     );
   } catch (error) {
-    console.log(error);
     HttpHelper.respondToClientWithError(response, error);
     LogHelper.LogError(error);
   }

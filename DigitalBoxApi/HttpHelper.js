@@ -10,12 +10,14 @@ exports.respondToClientWithError = (response, error) => {
     let errorText = error.response.statusText;
 
     if (errorCode === 401) {
+      AuthorizationHelper.clearAuthToken()
       response.json({
         Orders: [],
         Message: 'You have been logged out, please log in again and retry.',
         Token: AuthorizationHelper.authToken
       });
     } else if (errorText === 'Forbidden' && errorCode === 403) {
+      AuthorizationHelper.clearAuthToken()
       response.json({
         Orders: [],
         Message: 'You have been logged out, please log in again and retry.',
@@ -25,6 +27,14 @@ exports.respondToClientWithError = (response, error) => {
       response.json({
         Orders: [],
         Message: 'You have been rate limited, please wait a moment then retry.',
+        Token: AuthorizationHelper.authToken
+      });
+    }
+    else if (errorCode === 400) {
+      AuthorizationHelper.clearAuthToken()
+      response.json({
+        Orders: [],
+        Message: 'You have been logged out, please log in again and retry.',
         Token: AuthorizationHelper.authToken
       });
     } else {

@@ -38,3 +38,8 @@ const setAuthToken = () => {
     this.authToken = JSON.parse(fs.readFileSync('RefreshToken.json'));
   }
 }
+
+exports.clearAuthToken = () => {
+  this.authToken = ''
+  fs.writeFileSync('RefreshToken.json', "\"\"");
+}
