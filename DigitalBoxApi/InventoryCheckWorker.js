@@ -21,7 +21,7 @@ parentPort.on('message', function (message) {
     .flatMap(order => order.FileContents)
     .forEach(item => {
       const currentQty = itemMap.get(item.Title) || 0;
-      itemMap.set(item.Title, currentQty + item.Quantity);
+      itemMap.set(item.Title, parseInt(currentQty) + parseInt(item.Quantity));
     });
 
   const flattenedOrders = Array.from(itemMap, ([title, quantity]) => ({ title, quantity }));
