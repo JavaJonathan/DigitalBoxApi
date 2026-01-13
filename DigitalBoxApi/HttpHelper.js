@@ -174,7 +174,7 @@ const filterForMarketplace = (item, request) => {
     case 'shopify':
       return orderNumber.startsWith('1001');
     case 'ebay':
-      return orderNumber.length == 12 && orderNumber.includes('-');
+      return orderNumber.length == 14 && orderNumber.includes('-');
     case 'amazon':
       return orderNumber.length == 19 && orderNumber.includes('-');
     case 'walmart':
