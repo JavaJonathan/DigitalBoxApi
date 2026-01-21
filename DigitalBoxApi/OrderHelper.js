@@ -195,9 +195,9 @@ const readCsv = filePath => {
 const saveReport = reportList => {
   const filePath = path.join(__dirname, '/reports');
 
-  let csvContent = 'title\n';
+  let csvContent = 'title,sku\n';
   for (const item of reportList) {
-    csvContent += `"${item}"\n`;
+    csvContent += `"${item.title}","${item.sku}"\n`;
   }
 
   if (!fs.existsSync(filePath)) {
