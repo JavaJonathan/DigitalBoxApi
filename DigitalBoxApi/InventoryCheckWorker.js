@@ -27,12 +27,20 @@ parentPort.on('message', function (message) {
   const flattenedOrders = Array.from(itemMap, ([title, quantity]) => ({ title, quantity }));
 
   for (const lineItem of lineItems) {
+    if(/-\d$/.test(lineItem.sku)) continue; //skip any sku that ends with -<digit>
+
+    let orderQuantity = 0;
+
     for (const order of flattenedOrders) {
       if (lineItem.sku && order.title.includes(lineItem.sku)) {
         //This is the property name provided by the customer
-        if (( order.quantity + lineItem['26212b ridge rd'] ) > 0) results.push(order.title);
+        orderQuantity = orderQuantity + order.quantity;
       }
     }
+
+    let hasInventory = ( orderQuantity + parseInt(lineItem['26212b ridge rd']) ) > 0
+
+    if (orderQuantity > 0 && hasInventory) results.push({title: lineItem["product_title"], sku: lineItem.sku });
   }
 
   parentPort.postMessage({ results });
