@@ -10,12 +10,14 @@ exports.respondToClientWithError = (response, error) => {
     let errorText = error.response.statusText;
 
     if (errorCode === 401) {
+      AuthorizationHelper.clearAuthToken()
       response.json({
         Orders: [],
         Message: 'You have been logged out, please log in again and retry.',
         Token: AuthorizationHelper.authToken
       });
     } else if (errorText === 'Forbidden' && errorCode === 403) {
+      AuthorizationHelper.clearAuthToken()
       response.json({
         Orders: [],
         Message: 'You have been logged out, please log in again and retry.',
@@ -25,6 +27,14 @@ exports.respondToClientWithError = (response, error) => {
       response.json({
         Orders: [],
         Message: 'You have been rate limited, please wait a moment then retry.',
+        Token: AuthorizationHelper.authToken
+      });
+    }
+    else if (errorCode === 400) {
+      AuthorizationHelper.clearAuthToken()
+      response.json({
+        Orders: [],
+        Message: 'You have been logged out, please log in again and retry.',
         Token: AuthorizationHelper.authToken
       });
     } else {
@@ -164,7 +174,7 @@ const filterForMarketplace = (item, request) => {
     case 'shopify':
       return orderNumber.startsWith('1001');
     case 'ebay':
-      return orderNumber.length == 12 && orderNumber.includes('-');
+      return orderNumber.length == 14 && orderNumber.includes('-');
     case 'amazon':
       return orderNumber.length == 19 && orderNumber.includes('-');
     case 'walmart':

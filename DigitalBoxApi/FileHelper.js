@@ -302,7 +302,7 @@ const getPdfFiles = async (googleDrive, fileIds) => {
     while (fetch) {
       await googleDrive.files
         .list({
-          q: "'1_-sgosO7Pyq5b5ofxrD7z1Bb5uck8q8Z' in parents and trashed=false", //toBeShippedFolder
+          q: "'1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU' in parents and trashed=false", //toBeShippedFolder
           fields: 'nextPageToken, files(id, parents)',
           spaces: 'drive',
           pageToken: pageToken,
@@ -310,7 +310,7 @@ const getPdfFiles = async (googleDrive, fileIds) => {
         })
         .then(response => {
           response.data.files.forEach(function (file) {
-            if (file.parents[0] === '1_-sgosO7Pyq5b5ofxrD7z1Bb5uck8q8Z') {
+            if (file.parents[0] === '1TYJZ67Ghs0oqsBeBjdBfnmb2S7r8kMOU') {
               fileIds.push(file.id);
             }
           });

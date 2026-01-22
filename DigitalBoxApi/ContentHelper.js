@@ -135,8 +135,7 @@ exports.GetText = async fileId => {
           } else pdfItem.Title += item.text;
         } else if (startOrderNumber) {
           //these are dashes that cannot render, they need to be replaced
-          if (IsCharADash(item)) pdfItem.OrderNumber += '-';
-          else pdfItem.OrderNumber += item.text;
+          pdfItem.OrderNumber += item.R[0].T.replaceAll("%C2%AD", "-");
         }
         previousItem = item;
       }
